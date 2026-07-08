@@ -2,14 +2,18 @@
 
 ## AI Solution Accelerator — Equipment Knowledge Agent
 
-This guide walks through hosting the Contoso Electronics equipment documents across **two** enterprise knowledge sources and connecting both to a **Microsoft Copilot Studio** agent:
+This guide walks through setting up the full demo environment:
 
-- **Part of the documents on SharePoint** (the Word documents)
-- **Part of the documents on Azure AI Search** (the PDF documents, indexed from Azure Blob Storage)
+1. **Knowledge** — equipment documents hosted across **two** enterprise sources:
+   - **Part of the documents on SharePoint** (the Word documents)
+   - **Part of the documents on Azure AI Search** (the PDF documents, indexed from Azure Blob Storage)
+2. **Business system** — the **Work Order & Warranty System** ([../workorder-system](../workorder-system)) deployed to **Azure App Service**. It is the source of truth for warranty status and work orders that the agent's Azure Function will call.
+3. **Agent** — a **Microsoft Copilot Studio** agent that connects to the knowledge sources (and later, the deployed system via an Azure Function).
 
-Using two sources demonstrates that the agent can reason over knowledge no matter where it lives.
+Using two knowledge sources demonstrates that the agent can reason over knowledge no matter where it lives, and the deployed system shows the agent taking real business actions.
 
 > The equipment documents are generated in [../artifacts](../artifacts). See [generate_equipment_docs.py](../artifacts/generate_equipment_docs.py) to regenerate or change the format mix.
+> Deploy the Work Order & Warranty System **before** the demo (Part C below).
 
 ---
 
@@ -22,8 +26,11 @@ Using two sources demonstrates that the agent can reason over knowledge no matte
 | Azure subscription | Owner/Contributor on a resource group |
 | Azure AI Search | Basic tier or higher (Semantic ranking requires Basic+) |
 | Azure Storage account | To hold the PDF documents for indexing |
+| Azure App Service | For the Work Order & Warranty System (provisioned via Bicep in Part C) |
+| Node.js 18+ | To run/deploy the Work Order & Warranty System |
+| Azure CLI | Required for the Bicep deployment (`az`) |
 | Permissions | Ability to create a SharePoint site/library and Azure resources |
-| Tools | Azure Portal access; optionally Azure CLI and Azure Storage Explorer |
+| Tools | Azure Portal access; Azure CLI; optionally Azure Storage Explorer |
 
 ### Document split used in this demo
 
@@ -76,24 +83,86 @@ Using two sources demonstrates that the agent can reason over knowledge no matte
 
 ---
 
-## 4. Part C — Create and connect the Copilot Studio agent
+## 4. Part C — Deploy and test the Work Order & Warranty System
 
-### 4.1 Create the agent
+The [../workorder-system](../workorder-system) app tracks work orders and is the **source of truth for warranty**. Deploy it **before** the demo so the agent's Azure Function has a live API to call. Full details are in [../workorder-system/README.md](../workorder-system/README.md).
+
+### 4.1 Provision infrastructure (Bicep)
+
+From the repository root:
+
+```powershell
+# Sign in and select the subscription
+az login
+az account set --subscription "<your-subscription-id>"
+
+# Create a resource group
+az group create -n rg-contoso-workorders -l eastus
+
+# Deploy App Service + Application Insights
+az deployment group create `
+  -g rg-contoso-workorders `
+  -f workorder-system/infra/main.bicep `
+  -p workorder-system/infra/main.parameters.json
+```
+
+Record the deployment outputs: **`webAppName`**, **`webAppUrl`**, and **`apiBaseUrl`**.
+
+### 4.2 Publish the application code
+
+From the `workorder-system` folder:
+
+```powershell
+cd workorder-system
+az webapp up `
+  --name <webAppName-from-output> `
+  --resource-group rg-contoso-workorders `
+  --runtime "NODE:20-lts"
+```
+
+`SCM_DO_BUILD_DURING_DEPLOYMENT=true` (set by Bicep) runs `npm install` on the server during deployment.
+
+### 4.3 Test the system
+
+1. Open **`webAppUrl`** in a browser to view the dashboard (equipment, warranty status, and work orders).
+2. Test the **warranty** endpoint (source of truth for the agent):
+
+   ```powershell
+   curl "<apiBaseUrl>/equipment/CE-OSC-1200/warranty"
+   ```
+
+   Expect JSON with `"underWarranty": true` and a `daysRemaining` value.
+3. Create a **work order** and confirm it appears on the dashboard:
+
+   ```powershell
+   curl -Method POST "<apiBaseUrl>/workorders" `
+     -Headers @{ "Content-Type" = "application/json" } `
+     -Body '{ "assetId": "CE-LAS-3300", "title": "Test work order", "priority": "High", "requestedBy": "Setup Test" }'
+   ```
+4. List work orders to verify persistence: `curl "<apiBaseUrl>/workorders"`.
+
+> Keep the **`apiBaseUrl`** handy \u2014 the Azure Function created during the demo will call `.../equipment/{assetId}/warranty` and `.../workorders`.
+
+---
+
+## 5. Part D — Create and connect the Copilot Studio agent
+
+### 5.1 Create the agent
 
 1. Go to [Copilot Studio](https://copilotstudio.microsoft.com) and select your environment.
 2. Create a new **Agent** (start from a description or blank). Suggested name: **Contoso Maintenance Assistant**.
 3. Add agent **Instructions**, for example:
 
-   > "You are the Contoso Electronics maintenance assistant. Answer questions about factory equipment using the connected knowledge sources. Provide specifications, maintenance schedules, safety guidance, warranty details, and troubleshooting steps. Cite the equipment name and asset ID when relevant. If information is not in the knowledge sources, say so."
+   > "You are the Contoso Electronics maintenance assistant. Answer questions about factory equipment using the connected knowledge sources. Provide specifications, maintenance schedules, safety guidance, warranty details, and troubleshooting steps. When asked about warranty status or to create/check a work order, use the connected work order action. Cite the equipment name and asset ID when relevant. If information is not available, say so."
 
-### 4.2 Add SharePoint as a knowledge source
+### 5.2 Add SharePoint as a knowledge source
 
 1. On the agent, open **Knowledge → Add knowledge**.
 2. Choose **SharePoint**.
 3. Paste the **SharePoint site URL** (or specific document library URL) from Part A.
 4. Save. The agent will use Microsoft Search/Graph to retrieve from these documents.
 
-### 4.3 Add Azure AI Search as a knowledge source
+### 5.3 Add Azure AI Search as a knowledge source
 
 1. Open **Knowledge → Add knowledge** again.
 2. Choose **Azure AI Search** (Advanced/enterprise knowledge source).
@@ -106,33 +175,38 @@ Using two sources demonstrates that the agent can reason over knowledge no matte
 
 > If your environment does not expose Azure AI Search as a native knowledge source, add it as a **custom connector / tool** or via a **Power Platform connector**, pointing to the same index.
 
-### 4.4 Configure and test
+### 5.4 Configure and test
 
 1. Set **Generative answers** to use the connected knowledge sources; ensure **web search** is disabled (or restricted) so answers come from your documents.
 2. In the **Test** pane, ask a mix of questions that hit both sources (see [demo_guide.md](./demo_guide.md)).
 3. Confirm answers cite equipment content and that both SharePoint and Azure AI Search sources return results.
 
-### 4.5 Publish
+### 5.5 Publish
 
 1. Select **Publish** to make the agent available.
 2. Optionally add channels (Teams, custom website) as needed for the demo.
 
 ---
 
-## 5. (Optional) Prepare for the "Extend with code" step
+## 6. Prepare for the "Extend with code" step
 
-The demo later adds an **Azure Function** (for example, warranty check or work order creation) as a tool. To be ready:
+During the demo you build an **Azure Function** that calls the Work Order & Warranty System deployed in Part C, then add it as a tool in Copilot Studio. To be ready:
 
-- Note the **asset IDs** and **warranty expiry** dates from the documents (used by the function).
-- Ensure you have a resource group and the Azure Functions extension in VS Code.
+- Have the **`apiBaseUrl`** from Part C available. The Function will call:
+  - `GET  {apiBaseUrl}/equipment/{assetId}/warranty` \u2014 check warranty.
+  - `POST {apiBaseUrl}/workorders` \u2014 create a work order.
+  - `GET  {apiBaseUrl}/workorders?assetId={assetId}` \u2014 look up existing work orders.
+- Ensure you have the **Azure Functions** extension in VS Code and are signed in to Azure.
+- Note the **asset IDs** (e.g., `CE-OSC-1200`, `CE-LAS-3300`) used in demo questions.
 
 See [demo_guide.md](./demo_guide.md) for the full run-of-show and sample questions.
 
 ---
 
-## 6. Teardown
+## 7. Teardown
 
 After the demo, to avoid charges:
 
-- Delete the Azure AI Search service, storage account, and any Azure Function/App resources (or delete the entire resource group).
+- Delete the resource group holding the Work Order & Warranty System (`rg-contoso-workorders`) and the Azure Function.
+- Delete the Azure AI Search service and storage account (or their resource group).
 - Optionally remove the SharePoint library and unpublish the Copilot Studio agent.

@@ -1,0 +1,19 @@
+{
+  "name": "contoso-workorder-system",
+  "version": "1.0.0",
+  "description": "Contoso Electronics equipment work order tracking system (API + dashboard) for the AI Solution Accelerator demo.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "author": "Contoso Electronics",
+  "license": "MIT"
+}

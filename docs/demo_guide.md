@@ -2,7 +2,7 @@
 
 ## AI Solution Accelerator — 10 Minute Demo
 
-This guide is the presenter script for the demo described in [demo_proposal.md](./demo_proposal.md). It assumes the environment is already configured per [setup_guide.md](./setup_guide.md): equipment documents split across **SharePoint** (Word) and **Azure AI Search** (PDF), both connected to a **Copilot Studio** agent.
+This guide is the presenter script for the demo described in [demo_proposal.md](./demo_proposal.md). It assumes the environment is already configured per [setup_guide.md](./setup_guide.md): equipment documents split across **SharePoint** (Word) and **Azure AI Search** (PDF) and connected to a **Copilot Studio** agent, and the **Work Order & Warranty System** ([../workorder-system](../workorder-system)) already deployed to Azure App Service.
 
 ---
 
@@ -11,9 +11,11 @@ This guide is the presenter script for the demo described in [demo_proposal.md](
 - [ ] Copilot Studio agent (**Contoso Maintenance Assistant**) is published and responding.
 - [ ] SharePoint knowledge source returns results (Word documents indexed).
 - [ ] Azure AI Search index (`equipment-index`) indexer status is **Success** (PDF documents indexed).
+- [ ] **Work Order & Warranty System is deployed** and the dashboard (`webAppUrl`) loads; `GET {apiBaseUrl}/health` returns `ok`.
 - [ ] Web search is disabled on the agent so answers come from the documents.
 - [ ] VS Code open with the repo and GitHub Copilot enabled (for the "extend with code" step).
 - [ ] Azure subscription signed in for deploying the Azure Function.
+- [ ] Work order dashboard open in a browser tab to show live updates.
 - [ ] Test pane pre-loaded with one warm-up question.
 
 ---
@@ -28,7 +30,7 @@ Set the scene: a maintenance manager at Contoso Electronics needs an assistant t
 - Ask a question answered by **SharePoint** (Word docs) and one answered by **Azure AI Search** (PDF docs) to prove both are working.
 
 ### 3. Extend the agent with code (3 min)
-- Switch to VS Code; use GitHub Copilot to generate an **Azure Function** (e.g., `checkWarranty` or `createWorkOrder`).
+- Switch to VS Code; use GitHub Copilot to generate an **Azure Function** that calls the already-deployed Work Order & Warranty System API (`checkWarranty` → `GET /equipment/{assetId}/warranty`, `createWorkOrder` → `POST /workorders`).
 - Deploy the function to Azure.
 
 ### 4. Connect the new capability (2 min)
@@ -36,8 +38,9 @@ Set the scene: a maintenance manager at Contoso Electronics needs an assistant t
 - Show the agent picking it up immediately.
 
 ### 5. End-to-end experience (2 min)
-- Ask a question that needs **both** knowledge and the new action (e.g., look up an equipment's details and create a work order).
-- The agent reasons over the documents, calls the function, and returns an actionable answer.
+- Ask a question that needs **both** knowledge and the new action (e.g., look up an equipment issue and create a work order).
+- The agent reasons over the documents, calls the function (which writes to the deployed system), and returns an actionable answer.
+- Switch to the **work order dashboard** to show the new work order appear live.
 
 ---
 
@@ -84,16 +87,20 @@ Ask these in the Test pane or published channel. Each maps to a document so you 
 | Compare the reflow oven and the wave soldering machine — when do we use each? | Reflow (SharePoint) vs wave (Azure AI Search). |
 | What maintenance is due monthly across our SMT line equipment? | Aggregates stencil printer, AOI (SharePoint) + pick-and-place (Azure AI Search). |
 
-### D. Action questions (for the Azure Function step)
+### D. Action questions (backed by the deployed Work Order & Warranty System)
 
-Use these after the Azure Function tool is connected:
+Use these after the Azure Function tool is connected. The agent's Function calls the deployed system, so warranty answers and work orders are **real** and visible on the dashboard.
+
+> Given the current date, some assets are intentionally **out of warranty** — great for showing the "expired → create work order" flow: CO2 Laser Cutter (CE-LAS-3300), Wave Soldering Machine (CE-WAV-2600), and Soldering Station (CE-SOL-0450). Assets like the Oscilloscope (CE-OSC-1200) and X-Ray System (CE-XRI-3400) are still **under warranty**.
 
 | Question | Capability demonstrated |
 |----------|-------------------------|
-| Is the digital oscilloscope (CE-OSC-1200) still under warranty? | Warranty check function (warranty expiry 2027-03-14). |
-| The laser cutter (CE-LAS-3300) needs service — create a work order. | Work order creation function. |
-| The soldering station keeps throwing error E-04. Look up the fix and open a maintenance work order for it. | End-to-end: knowledge retrieval + action. |
-| Check the warranty on the wave soldering machine and, if expired, create a work order to renew the service contract. | Reasoning + conditional action. |
+| Is the digital oscilloscope (CE-OSC-1200) still under warranty? | Warranty check — returns **Active** with days remaining. |
+| Is the CO2 laser cutter (CE-LAS-3300) under warranty? | Warranty check — returns **Expired**. |
+| The laser cutter (CE-LAS-3300) needs service — create a work order. | Work order creation; appears on the dashboard. |
+| The soldering station keeps throwing error E-04. Look up the fix and open a maintenance work order for it. | End-to-end: knowledge retrieval + work order creation. |
+| Check the warranty on the wave soldering machine (CE-WAV-2600) and, if expired, create a work order to renew the service contract. | Reasoning + conditional action against the live system. |
+| Show me the open work orders for the laser cutter. | Work order lookup (`GET /workorders?assetId=CE-LAS-3300`). |
 
 ---
 
@@ -102,4 +109,5 @@ Use these after the Azure Function tool is connected:
 - Start with one **SharePoint** and one **Azure AI Search** question back-to-back to prove both sources work.
 - Keep questions specific (include the equipment name or asset ID) for the cleanest, grounded answers.
 - If an answer looks generic, confirm web search is disabled and the knowledge sources are healthy.
+- Keep the **work order dashboard** visible so the audience sees work orders appear live when the agent creates them.
 - Save the **action questions** for the finale so the payoff (knowledge + custom capability) lands last.

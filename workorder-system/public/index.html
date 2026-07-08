@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contoso Electronics — Equipment Work Orders & Warranty</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">Contoso Electronics</span>
+      <span class="brand-sub">Equipment Work Order &amp; Warranty System</span>
+    </div>
+    <button id="refreshBtn" class="btn btn-ghost" title="Refresh">Refresh</button>
+  </header>
+
+  <main class="container">
+    <section class="cards" id="statCards"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Create Work Order</h2>
+      </div>
+      <form id="workOrderForm" class="form-grid">
+        <label>
+          Equipment
+          <select id="assetId" required></select>
+        </label>
+        <label>
+          Title
+          <input id="title" type="text" placeholder="e.g. Replace heating cartridge" required />
+        </label>
+        <label>
+          Priority
+          <select id="priority">
+            <option>Low</option>
+            <option selected>Medium</option>
+            <option>High</option>
+            <option>Critical</option>
+          </select>
+        </label>
+        <label>
+          Requested By
+          <input id="requestedBy" type="text" placeholder="e.g. Maintenance Manager" />
+        </label>
+        <label class="span-2">
+          Description
+          <textarea id="description" rows="2" placeholder="Describe the issue or work required"></textarea>
+        </label>
+        <div class="form-actions span-2">
+          <button type="submit" class="btn btn-primary">Create Work Order</button>
+          <span id="formMsg" class="form-msg"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Equipment &amp; Warranty</h2>
+      </div>
+      <div class="table-wrap">
+        <table id="equipmentTable">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>Equipment</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Warranty Expiry</th>
+              <th>Warranty</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Work Orders</h2>
+      </div>
+      <div class="table-wrap">
+        <table id="workOrderTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Equipment</th>
+              <th>Title</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Requested By</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    Contoso Electronics — AI Solution Accelerator demo. API base: <code id="apiBase"></code>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
