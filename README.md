@@ -53,13 +53,14 @@ flowchart LR
 | [artifacts/](artifacts/) | 15 equipment reference documents (7 Word + 8 PDF) used as agent knowledge, plus the generator script. |
 | [workorder-system/](workorder-system/) | Node.js/Express **Work Order & Warranty System** — REST API, dashboard, MCP endpoint, and Bicep for Azure App Service. |
 | [cowork-plugin/](cowork-plugin/) | **Copilot Cowork plugin** (manifest, skill, icons) that generates equipment decks from live system data. |
+| [dataverse/](dataverse/) | *(Optional)* Sample **Dataverse** service-contract data (`equipment-service-contracts.csv`) for the "combine data from two sources" extension. |
 
 ### Documentation index
 
 | Document | Purpose |
 |----------|---------|
 | [docs/demo_proposal.md](docs/demo_proposal.md) | The demo story, flow, and key messages. |
-| [docs/setup_guide.md](docs/setup_guide.md) | Step‑by‑step **environment setup to complete before the demo** (SharePoint, Azure AI Search, deploy the system, Copilot Studio agent, install the Cowork plugin). |
+| [docs/setup_guide.md](docs/setup_guide.md) | Step‑by‑step **environment setup to complete before the demo** (SharePoint, Azure AI Search, deploy the system, Copilot Studio agent, install the Cowork plugin, and the optional Dataverse table). |
 | [docs/demo_guide.md](docs/demo_guide.md) | The **presenter run‑of‑show**, the exact GitHub Copilot prompts and CLI commands for the live Azure Functions, sample questions, and the Cowork deck finale. |
 | [workorder-system/README.md](workorder-system/README.md) | System API reference and deployment details. |
 | [cowork-plugin/README.md](cowork-plugin/README.md) | Plugin build, packaging, and installation. |
@@ -74,6 +75,7 @@ flowchart LR
 | Work Order & Warranty System ([workorder-system/](workorder-system/)) | Prepared — deployed to Azure **before** the demo. |
 | Copilot Studio agent + knowledge | Prepared — configured **before** the demo. |
 | Copilot Cowork plugin ([cowork-plugin/](cowork-plugin/)) | Prepared — installed **before** the demo. |
+| **(Optional) Dataverse table** ([dataverse/](dataverse/)) | Prepared — table created and data loaded **before** the demo; the connector is added to the agent live. |
 | **Azure Functions** (`checkWarranty`, `createWorkOrder`) | **Built live** with GitHub Copilot, then connected to the agent. |
 
 ---
@@ -86,6 +88,7 @@ flowchart LR
    - Deploy the [Work Order & Warranty System](workorder-system/) to Azure App Service.
    - Create and connect the Copilot Studio agent.
    - Build and install the [Copilot Cowork plugin](cowork-plugin/).
+   - *(Optional)* Create the **Dataverse** service-contract table and load [dataverse/equipment-service-contracts.csv](dataverse/equipment-service-contracts.csv) (setup guide Part F) for the "combine data from two sources" story.
 3. **Rehearse and present** using [docs/demo_guide.md](docs/demo_guide.md).
 
 > Regenerate the equipment documents anytime with `python artifacts/generate_equipment_docs.py` (see the script to change the Word/PDF mix).
