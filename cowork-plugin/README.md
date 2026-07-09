@@ -54,7 +54,7 @@ From the `cowork-plugin` folder — all files must be at the **root** of the zip
 
 ```powershell
 cd cowork-plugin
-Compress-Archive -Path manifest.json, color.png, outline.png, skills -DestinationPath contoso-equipment-insights.zip -Force
+Compress-Archive -Path manifest.json, color.png, outline.png, mcp-tool-description.json, skills -DestinationPath contoso-equipment-insights.zip -Force
 ```
 
 ### 4. Install (sideload) for personal use

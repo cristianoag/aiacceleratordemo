@@ -238,7 +238,7 @@ From the `cowork-plugin` folder (all files must be at the zip **root**):
 
 ```powershell
 cd cowork-plugin
-Compress-Archive -Path manifest.json, color.png, outline.png, skills -DestinationPath contoso-equipment-insights.zip -Force
+Compress-Archive -Path manifest.json, color.png, outline.png, mcp-tool-description.json, skills -DestinationPath contoso-equipment-insights.zip -Force
 ```
 
 ### 6.3 Install (sideload) with the Agents Toolkit CLI

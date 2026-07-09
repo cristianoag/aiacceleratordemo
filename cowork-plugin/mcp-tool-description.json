@@ -1,0 +1,65 @@
+{
+  "tools": [
+    {
+      "name": "list_equipment",
+      "description": "Returns all Contoso Electronics equipment with details and computed warranty status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_equipment",
+      "description": "Returns details and warranty status for a single asset by its asset ID (e.g., CE-OSC-1200).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "description": "Equipment asset ID, e.g., CE-OSC-1200"
+          }
+        },
+        "required": ["assetId"]
+      }
+    },
+    {
+      "name": "check_warranty",
+      "description": "Checks warranty status (Active or Expired, plus days remaining) for an asset by its asset ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "description": "Equipment asset ID, e.g., CE-LAS-3300"
+          }
+        },
+        "required": ["assetId"]
+      }
+    },
+    {
+      "name": "list_work_orders",
+      "description": "Lists work orders, optionally filtered by assetId or status (Open, In Progress, On Hold, Completed, Cancelled).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "description": "Filter by asset ID"
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter by work order status"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_summary",
+      "description": "Returns aggregate statistics plus a per-asset warranty breakdown across all equipment. Ideal source data for building a status deck or report.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

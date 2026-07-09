@@ -34,7 +34,10 @@
       "description": "Access to equipment inventory, warranty status, and work orders for Contoso Electronics.",
       "toolSource": {
         "remoteMcpServer": {
-          "mcpServerUrl": "https://REPLACE-WITH-YOUR-WORKORDER-APP.azurewebsites.net/mcp",
+          "mcpServerUrl": "https://<WebAppName>.azurewebsites.net/mcp",
+          "mcpToolDescription": {
+            "file": "mcp-tool-description.json"
+          },
           "authorization": {
             "type": "None"
           }
