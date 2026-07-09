@@ -11,8 +11,8 @@ This repository contains everything needed to deliver the **AI Solution Accelera
 ## What the demo shows
 
 1. **Knowledge Q&A** — a Copilot Studio agent answers equipment questions grounded in documents hosted across **SharePoint** and **Azure AI Search**.
-2. **AI‑assisted development** — GitHub Copilot generates **two Azure Functions** (`checkWarranty`, `createWorkOrder`) that call a live business system. *(This is the only piece built live during the presentation.)*
-3. **Real business actions** — the agent uses the functions to check warranty and create work orders in the **Work Order & Warranty System**.
+2. **AI‑assisted development** — GitHub Copilot generates an **OpenAPI connector spec** for the two existing API endpoints (`checkWarranty`, `createWorkOrder`), imported as a **custom connector** in Copilot Studio. *(This is the only piece built live during the presentation.)*
+3. **Real business actions** — the agent uses these operations to check warranty and create work orders in the **Work Order & Warranty System**.
 4. **Artifact generation** — **Copilot Cowork** generates a PowerPoint deck from the same live system data via a custom plugin.
 
 ## Architecture
@@ -24,7 +24,7 @@ flowchart LR
     subgraph Copilot["Microsoft Copilot Studio Agent"]
       KB1[SharePoint<br/>Word docs]
       KB2[Azure AI Search<br/>PDF docs]
-      FN[Azure Functions<br/>checkWarranty / createWorkOrder]
+      FN[Custom connector<br/>checkWarranty / createWorkOrder]
     end
 
     subgraph System["Work Order & Warranty System (Azure App Service)"]
@@ -61,7 +61,7 @@ flowchart LR
 |----------|---------|
 | [docs/demo_proposal.md](docs/demo_proposal.md) | The demo story, flow, and key messages. |
 | [docs/setup_guide.md](docs/setup_guide.md) | Step‑by‑step **environment setup to complete before the demo** (SharePoint, Azure AI Search, deploy the system, Copilot Studio agent, install the Cowork plugin, and the optional Dataverse table). |
-| [docs/demo_guide.md](docs/demo_guide.md) | The **presenter run‑of‑show**, the exact GitHub Copilot prompts and CLI commands for the live Azure Functions, sample questions, and the Cowork deck finale. |
+| [docs/demo_guide.md](docs/demo_guide.md) | The **presenter run‑of‑show**, the exact GitHub Copilot prompt and CLI commands for the live OpenAPI connector spec, sample questions, and the Cowork deck finale. |
 | [workorder-system/README.md](workorder-system/README.md) | System API reference and deployment details. |
 | [cowork-plugin/README.md](cowork-plugin/README.md) | Plugin build, packaging, and installation. |
 
@@ -76,7 +76,7 @@ flowchart LR
 | Copilot Studio agent + knowledge | Prepared — configured **before** the demo. |
 | Copilot Cowork plugin ([cowork-plugin/](cowork-plugin/)) | Prepared — installed **before** the demo. |
 | **(Optional) Dataverse table** ([dataverse/](dataverse/)) | Prepared — table created and data loaded **before** the demo; the connector is added to the agent live. |
-| **Azure Functions** (`checkWarranty`, `createWorkOrder`) | **Built live** with GitHub Copilot, then connected to the agent. |
+| **OpenAPI connector spec** (`checkWarranty`, `createWorkOrder`) | **Built live** with GitHub Copilot, then imported as a custom connector in Copilot Studio. |
 
 ---
 
@@ -97,6 +97,6 @@ flowchart LR
 
 ## Notes
 
-- The Work Order & Warranty System is the **single source of truth** for warranty status and work orders — the Copilot Studio agent (via Azure Functions) and Copilot Cowork (via the MCP connector) both read the same data.
+- The Work Order & Warranty System is the **single source of truth** for warranty status and work orders — the Copilot Studio agent (via a custom connector) and Copilot Cowork (via the MCP connector) both read the same data.
 - Some equipment warranties are intentionally **expired** relative to the demo date, enabling the "expired → create work order" narrative.
 - The samples use demo‑grade authentication (open endpoints). Harden authentication before any non‑demo use.
