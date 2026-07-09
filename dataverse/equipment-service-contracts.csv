@@ -1,0 +1,16 @@
+AssetId,EquipmentName,VendorName,VendorContactEmail,ContractStatus,RenewalCost,Currency,SlaResponseHours,LastServiceDate,NextServiceDue,AnnualDowntimeCostEstimate
+CE-OSC-1200,Digital Storage Oscilloscope,Northwind Instruments Support,service@northwind-instruments.com,Active,1800,USD,24,2026-03-02,2026-09-02,4500
+CE-SOL-0450,Soldering Station,Tailspin Industrial Maintenance,dispatch@tailspin-maintenance.com,Expired,950,USD,48,2025-12-18,2026-06-18,3200
+CE-LAS-3300,CO2 Laser Cutter,Fabrikam Field Service,support@fabrikam-fieldservice.com,Expired,7800,USD,8,2025-07-30,2026-01-30,12000
+CE-RFO-2100,Reflow Soldering Oven,Contoso Assembly Tools,smt.line.support@contoso.com,Active,5200,USD,8,2026-04-15,2026-10-15,9000
+CE-PNP-2200,Pick and Place Machine,Contoso Assembly Tools,smt.line.support@contoso.com,Active,6400,USD,8,2026-05-10,2026-11-10,15000
+CE-AOI-2400,Automated Optical Inspection System,Wide World Importers Service Co.,help@wwi-service.com,Active,3600,USD,24,2026-02-20,2026-08-20,8000
+CE-WAV-2600,Wave Soldering Machine,Contoso Assembly Tools,through.hole.support@contoso.com,Expired,4100,USD,24,2025-05-28,2025-11-28,7500
+CE-SPP-2000,Solder Paste Stencil Printer,Contoso Assembly Tools,smt.line.support@contoso.com,Active,2400,USD,24,2026-03-30,2026-09-30,6000
+CE-FGN-1300,Function / Arbitrary Waveform Generator,Northwind Instruments Support,service@northwind-instruments.com,Active,1500,USD,24,2026-05-18,2026-11-18,3000
+CE-PSU-1400,Programmable DC Power Supply,Northwind Instruments Support,service@northwind-instruments.com,Active,1200,USD,48,2026-04-05,2026-10-05,2500
+CE-DMM-1100,Bench Digital Multimeter,Northwind Instruments Support,service@northwind-instruments.com,Active,900,USD,48,2026-01-25,2026-07-25,2000
+CE-ETC-3100,Environmental Test Chamber,Adventure Works Precision Services,contracts@adventure-works-precision.com,Active,4800,USD,24,2026-03-10,2026-09-10,5000
+CE-XRI-3400,X-Ray Inspection System,Wide World Importers Service Co.,help@wwi-service.com,Active,9500,USD,8,2026-06-01,2026-12-01,14000
+CE-CCM-2800,Conformal Coating Machine,Adventure Works Precision Services,contracts@adventure-works-precision.com,Active,3100,USD,48,2026-02-14,2026-08-14,4000
+CE-ESD-0100,ESD-Protected Assembly Workstation,Contoso Assembly Tools,assembly.support@contoso.com,Active,400,USD,72,2026-05-02,2026-11-02,1000

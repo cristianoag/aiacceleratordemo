@@ -140,6 +140,37 @@ In the **Test** pane, run the Section D questions below (e.g., "Is CE-OSC-1200 u
 
 ---
 
+## (Optional extension) Adding Dataverse business data
+
+Use this if you want a talk track that shows the agent **combining data from two sources in a single answer**: the live **Work Order & Warranty System** API (operational truth — warranty, work orders) **and** a **Dataverse** table holding the business context a customer typically already has (vendors, service contracts, SLA, cost). Keying both on the same `AssetId` lets the agent join them.
+
+> **Prerequisite:** the **Equipment Service Contract** Dataverse table is created and loaded per [setup_guide.md](./setup_guide.md) Part F.
+
+> **Why this lands.** The equipment API deliberately does **not** know about renewal cost, service vendor, or SLA. So a question like *"The laser cutter is out of warranty — who's our service vendor, what's the renewal cost, and what's their SLA?"* forces the agent to call the **API** (warranty status) **and** **Dataverse** (vendor, cost, SLA) and merge the result — a clean "one agent, many systems" moment.
+
+### Connect it in Copilot Studio (done live)
+
+1. Open your **Contoso Maintenance Assistant** agent → **Tools** → **Add a tool**.
+2. Choose the **Microsoft Dataverse** connector and the action **List rows** (or **Get a row by ID / alternate key**) against the **Equipment Service Contract** table.
+3. Give it a clear description so the orchestrator knows when to call it, e.g.: *"Looks up the service contract, vendor, SLA response time, and renewal cost for a piece of equipment by its asset ID (e.g., CE-LAS-3300)."*
+4. Add `AssetId` as the input parameter and describe it.
+5. **Save** and **Publish** the agent.
+
+### Cross-source questions (API + Dataverse)
+
+Run these in the **Test** pane to show both sources being combined:
+
+| Question | What the agent combines |
+|----------|-------------------------|
+| "The CO2 laser cutter (CE-LAS-3300) is out of warranty — who's our service vendor, what's the renewal cost, and what's their SLA?" | **API** warranty status + **Dataverse** vendor, `RenewalCost`, `SlaResponseHours`. |
+| "The wave soldering machine (CE-WAV-2600) failed. Is it under warranty, and if not, what would a renewal cost and who do we call?" | **API** warranty (Expired) + **Dataverse** vendor + `RenewalCost` + `VendorContactEmail`. |
+| "Create a High priority work order for the laser cutter and tell me the vendor SLA so I know the response time." | **API** create work order + **Dataverse** `SlaResponseHours` + `VendorName`. |
+| "Which of our expired-warranty machines has the highest annual downtime cost, and what's the renewal cost to cover it?" | **API** warranty status across assets + **Dataverse** `AnnualDowntimeCostEstimate` + `RenewalCost`. |
+
+> Presenter tip: pair this with the dashboard — warranty/work-order data matches the API, while the vendor/cost/SLA figures come only from Dataverse, making the "two systems, one answer" point obvious.
+
+---
+
 ## Generating a PowerPoint with Copilot Cowork
 
 This is the optional finale (run-of-show step 6). It shows the **same** Work Order & Warranty System data being turned into a polished artifact by **Copilot Cowork** using the **Contoso Equipment Insights** plugin ([../cowork-plugin](../cowork-plugin)).

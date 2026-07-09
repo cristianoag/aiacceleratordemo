@@ -10,6 +10,7 @@ This guide walks through setting up the full demo environment:
 2. **Business system** — the **Work Order & Warranty System** ([../workorder-system](../workorder-system)) deployed to **Azure App Service**. It is the source of truth for warranty status and work orders that the agent's Azure Function will call.
 3. **Agent** — a **Microsoft Copilot Studio** agent that connects to the knowledge sources (and later, the deployed system via an Azure Function).
 4. **Artifact generation** — a **Copilot Cowork plugin** ([../cowork-plugin](../cowork-plugin)) that generates PowerPoint decks/reports from live Work Order & Warranty System data.
+5. **(Optional) Business data** — a **Dataverse** table (service contracts, vendors, SLA, cost) so the agent can combine operational API data with enterprise business data in one answer.
 
 Using two knowledge sources demonstrates that the agent can reason over knowledge no matter where it lives, and the deployed system shows the agent taking real business actions.
 
@@ -264,7 +265,46 @@ A successful install returns a `TitleId` and `AppId` \u2014 save them for update
 
 ---
 
-## 7. Prepare for the "Extend with code" step
+## 7. Part F — (Optional) Add Dataverse business data
+
+This optional part sets up a **Dataverse** table so the demo can show the agent **combining data from two sources** — the live Work Order & Warranty System API (warranty, work orders) **and** Dataverse business context (vendors, service contracts, SLA, renewal cost). Keyed on the same `AssetId`, the agent can join them in a single answer. The talk track and live Copilot Studio wiring are in [demo_guide.md](./demo_guide.md) ("Adding Dataverse business data").
+
+### 7.1 Create the `Equipment Service Contract` table
+
+Create a Dataverse table with these columns (the equipment API deliberately does **not** hold these fields, which is what makes the "two systems, one answer" story work):
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `AssetId` | Text (Primary/Alternate key) | Join key, e.g. `CE-LAS-3300`. |
+| `EquipmentName` | Text | Friendly name for readability. |
+| `VendorName` | Text | Service vendor. |
+| `VendorContactEmail` | Email | Vendor dispatch/support email. |
+| `ContractStatus` | Choice / Text | `Active`, `Expired`, or `None`. |
+| `RenewalCost` | Currency | Cost to renew the service contract. |
+| `Currency` | Text | e.g. `USD`. |
+| `SlaResponseHours` | Whole Number | Contractual response time in hours. |
+| `LastServiceDate` | Date Only | Last on-site service. |
+| `NextServiceDue` | Date Only | Next scheduled service. |
+| `AnnualDowntimeCostEstimate` | Currency | Business impact talk-track figure. |
+
+### 7.2 Load the sample data
+
+Sample rows are in [../dataverse/equipment-service-contracts.csv](../dataverse/equipment-service-contracts.csv). They use the same asset IDs as the equipment data, and the three **expired-warranty** assets (CE-LAS-3300, CE-WAV-2600, CE-SOL-0450) intentionally have **Expired** contracts to drive the renewal story.
+
+1. Go to the [Power Apps maker portal](https://make.powerapps.com) in the **same environment** as your agent.
+2. **Tables → Import → Import data from Excel/CSV**, and upload [../dataverse/equipment-service-contracts.csv](../dataverse/equipment-service-contracts.csv). Let it create a new table named **Equipment Service Contract**.
+3. Map the columns to the types above; set **`AssetId`** as an **alternate key** (Tables → the table → **Keys → New key**) so lookups by asset ID are reliable.
+4. **Save & publish** the table.
+
+### 7.3 Verify
+
+- In the maker portal, open the table's data view and confirm all 15 rows loaded and that the expired-warranty assets show `ContractStatus = Expired`.
+
+> The Dataverse connector is added to the agent **live during the demo** — see [demo_guide.md](./demo_guide.md) for those steps and the cross-source sample questions.
+
+---
+
+## 8. Prepare for the "Extend with code" step
 
 During the demo you build an **Azure Function** that calls the Work Order & Warranty System deployed in Part C, then add it as a tool in Copilot Studio. To be ready:
 
@@ -279,11 +319,12 @@ See [demo_guide.md](./demo_guide.md) for the full run-of-show and sample questio
 
 ---
 
-## 8. Teardown
+## 9. Teardown
 
 After the demo, to avoid charges:
 
 - Delete the resource group holding the Work Order & Warranty System (`rg-contoso-workorders`) and the Azure Function.
 - Delete the Azure AI Search service and storage account (or their resource group).
 - Uninstall the Cowork plugin: `atk uninstall --title-id <TitleId>` (or remove it from the M365 admin center), using the `TitleId` saved during install.
+- If you added Part F, delete the **Equipment Service Contract** Dataverse table from the Power Apps maker portal.
 - Optionally remove the SharePoint library and unpublish the Copilot Studio agent.
