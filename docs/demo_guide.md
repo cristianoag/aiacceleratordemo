@@ -36,12 +36,12 @@ Set the scene: a maintenance manager at Contoso Electronics needs an assistant t
 - **Use the exact prompts and commands in [Building, deploying & connecting the Azure Functions](#building-deploying--connecting-the-azure-functions) below.**
 
 ### 4. Connect the new capability (2 min)
-- Add the two functions as **tools/actions** in Copilot Studio (see the same section below).
+- Add the two operations as **tools/actions** in Copilot Studio (see the same section below).
 - Show the agent picking them up immediately.
 
 ### 5. End-to-end experience (2 min)
 - Ask a question that needs **both** knowledge and the new action (e.g., look up an equipment issue and create a work order).
-- The agent reasons over the documents, calls the function (which writes to the deployed system), and returns an actionable answer.
+- The agent reasons over the documents, calls the operation (which writes to the deployed system), and returns an actionable answer.
 - Switch to the **work order dashboard** to show the new work order appear live.
 
 ### 6. (Optional finale) Generate a deck with Copilot Cowork (1 min)
@@ -74,7 +74,7 @@ The two endpoints already exist in [../workorder-system/server.js](../workorder-
 
 **Now build the connector spec live.** Open Copilot Chat (agent mode) and run this single prompt — this is the on-stage "watch Copilot build it" moment:
 
-> Look at the `GET /api/checkWarranty` and `POST /api/createWorkOrder` routes in `workorder-system/server.js` and the data shapes returned by `workorder-system/lib/store.js`. Generate an **OpenAPI 2.0 (Swagger)** file named `workorder-system/openapi.json` describing both endpoints, with `host` set to `app-contosowo-mvjskqas3y4lo.azurewebsites.net`, `basePath` `/api`, request/response schemas, and example responses, so it can be imported as a custom connector in Copilot Studio.
+> Look at the `GET /api/checkWarranty` and `POST /api/createWorkOrder` routes in `workorder-system/server.js` and the data shapes returned by `workorder-system/lib/store.js`. Generate an **OpenAPI 2.0 (Swagger)** file named `workorder-system/openapi.json` describing both endpoints, with `host` set to `app-contosowo-mvjskqas3y4lo.azurewebsites.net`, `basePath` `/api`, request/response schemas, and example responses, so it can be imported as a custom connector in Copilot Studio. Make the schema strict enough for the Power Apps custom connector to import without type-mismatch errors: give every integer property an explicit `"format": "int32"` (e.g. `daysRemaining`), use `"format": "date-time"` for ISO timestamps (`checkedAt`, `createdAt`, `updatedAt`) and `"format": "date"` for date-only fields (`installDate`, `warrantyExpiry`), and mark nullable properties (e.g. `assignedTo`) with `"x-nullable": true`.
 
 > Presenter fallback: a known-good copy is saved as `workorder-system/openapi.reference.json`. If the live generation misbehaves, copy it over `workorder-system/openapi.json` and continue.
 
@@ -88,7 +88,7 @@ The `checkWarranty` and `createWorkOrder` operations are routes on the existing 
 # From the workorder-system folder (reuses the App Service from Part C)
 cd workorder-system
 az webapp up `
-  --name <webAppName-from-Part-C> `
+  --name app-contosowo-mvjskqas3y4lo `
   --resource-group rg-contoso-workorders `
   --runtime "NODE:22-lts"
 ```
@@ -105,7 +105,7 @@ curl -X POST "https://<webAppName>.azurewebsites.net/api/createWorkOrder" `
   -d '{"assetId":"CE-LAS-3300","title":"Laser cutter needs service","priority":"High"}'
 ```
 
-### Step C — Add the functions as tools in Copilot Studio
+### Step C — Add the operations as tools in Copilot Studio
 
 **Recommended: import the OpenAPI file as a custom connector**
 
@@ -118,7 +118,7 @@ curl -X POST "https://<webAppName>.azurewebsites.net/api/createWorkOrder" `
 7. **Create connector**, then **Test** it (no key needed unless `API_KEY` is set on the app).
 8. Back in Copilot Studio, on the agent select **Add a tool**, pick your custom connector, and add both operations.
 
-**Alternative: add each function as a REST API / HTTP action**
+**Alternative: add each operation as a REST API / HTTP action**
 
 1. On the agent, **Add a tool** → **REST API** (or **Add an action** → **Create new**).
 2. Provide the method and URL, e.g. `GET https://<webAppName>.azurewebsites.net/api/checkWarranty`.
@@ -136,7 +136,7 @@ curl -X POST "https://<webAppName>.azurewebsites.net/api/createWorkOrder" `
 
 ### Step D — Verify end to end
 
-In the **Test** pane, run the Section D questions below (e.g., "Is CE-OSC-1200 under warranty?" and "Create a work order for the laser cutter"). Confirm the agent calls the functions and that new work orders appear on the dashboard.
+In the **Test** pane, run the Section D questions below (e.g., "Is CE-OSC-1200 under warranty?" and "Create a work order for the laser cutter"). Confirm the agent calls the operations and that new work orders appear on the dashboard.
 
 ---
 
@@ -215,7 +215,7 @@ Ask these in the Test pane or published channel. Each maps to a document so you 
 
 ### D. Action questions (backed by the deployed Work Order & Warranty System)
 
-Use these after the Azure Function tool is connected. The agent's Function calls the deployed system, so warranty answers and work orders are **real** and visible on the dashboard.
+Use these after the connector tools are connected. The agent calls the deployed system, so warranty answers and work orders are **real** and visible on the dashboard.
 
 > Given the current date, some assets are intentionally **out of warranty** — great for showing the "expired → create work order" flow: CO2 Laser Cutter (CE-LAS-3300), Wave Soldering Machine (CE-WAV-2600), and Soldering Station (CE-SOL-0450). Assets like the Oscilloscope (CE-OSC-1200) and X-Ray System (CE-XRI-3400) are still **under warranty**.
 

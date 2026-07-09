@@ -172,6 +172,7 @@
         },
         "daysRemaining": {
           "type": "integer",
+          "format": "int32",
           "example": 249
         },
         "supportContact": {
