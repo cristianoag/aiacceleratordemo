@@ -123,7 +123,7 @@ az login
 az account set --subscription "<your-subscription-id>"
 
 # Create a resource group
-az group create -n rg-contoso-workorders -l eastus
+az group create -n rg-contoso-workorders -l westus2
 
 # Deploy App Service + Application Insights
 az deployment group create `
@@ -147,7 +147,7 @@ cd workorder-system
 az webapp up `
   --name <webAppName-from-output> `
   --resource-group rg-contoso-workorders `
-  --runtime "NODE:20-lts"
+  --runtime "NODE:22-lts"
 ```
 
 `SCM_DO_BUILD_DURING_DEPLOYMENT=true` (set by Bicep) runs `npm install` on the server during deployment.
@@ -158,18 +158,20 @@ az webapp up `
 2. Test the **warranty** endpoint (source of truth for the agent):
 
    ```powershell
-   curl "<apiBaseUrl>/equipment/CE-OSC-1200/warranty"
+   Invoke-RestMethod "<apiBaseUrl>/equipment/CE-OSC-1200/warranty"
    ```
 
    Expect JSON with `"underWarranty": true` and a `daysRemaining` value.
 3. Create a **work order** and confirm it appears on the dashboard:
 
    ```powershell
-   curl -Method POST "<apiBaseUrl>/workorders" `
-     -Headers @{ "Content-Type" = "application/json" } `
+   Invoke-RestMethod -Method POST "<apiBaseUrl>/workorders" `
+     -ContentType "application/json" `
      -Body '{ "assetId": "CE-LAS-3300", "title": "Test work order", "priority": "High", "requestedBy": "Setup Test" }'
    ```
-4. List work orders to verify persistence: `curl "<apiBaseUrl>/workorders"`.
+4. List work orders to verify persistence: `Invoke-RestMethod "<apiBaseUrl>/workorders"`.
+
+> On Windows PowerShell, `curl` is often the native `curl.exe`, which ignores `-Method`/`-Headers`/`-Body` (you'll see a `built-in manual was disabled` warning and no POST happens). Use `Invoke-RestMethod` as shown above.
 
 > Keep the **`apiBaseUrl`** handy \u2014 the Azure Function created during the demo will call `.../equipment/{assetId}/warranty` and `.../workorders`.
 
@@ -179,7 +181,7 @@ az webapp up `
 
 ### 5.1 Create the agent
 
-1. Go to [Copilot Studio](https://copilotstudio.microsoft.com) and select your environment.
+1. Go to [Copilot Studio](https://copilotstudio.microsoft.com) and select your environment. 
 2. Create a new **Agent** (start from a description or blank). Suggested name: **Contoso Maintenance Assistant**.
 3. Add agent **Instructions**, for example:
 

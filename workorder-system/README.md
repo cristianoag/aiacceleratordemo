@@ -160,7 +160,7 @@ From the `workorder-system` folder:
 az webapp up `
   --name <webAppName-from-output> `
   --resource-group rg-contoso-workorders `
-  --runtime "NODE:20-lts"
+  --runtime "NODE:22-lts"
 ```
 
 Or zip-deploy:

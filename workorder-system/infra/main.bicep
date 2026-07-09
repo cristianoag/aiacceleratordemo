@@ -40,7 +40,7 @@ param location string = resourceGroup().location
 param appServicePlanSku string = 'F1'
 
 @description('Node.js runtime version for the Linux Web App.')
-param nodeVersion string = '20-lts'
+param nodeVersion string = '22-lts'
 
 @description('Optional API key. If set, API callers must send it via the x-api-key header. Leave empty to disable auth (demo).')
 @secure()
@@ -118,7 +118,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~20'
+          value: '~22'
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
