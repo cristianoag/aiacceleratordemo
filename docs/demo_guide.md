@@ -31,8 +31,8 @@ Set the scene: a maintenance manager at Contoso Electronics needs an assistant t
 - Ask a question answered by **SharePoint** (Word docs) and one answered by **Azure AI Search** (PDF docs) to prove both are working.
 
 ### 3. Extend the agent with code (3 min)
-- Switch to VS Code (this repo is open); use GitHub Copilot to add **two HTTP endpoints** to the already-deployed Work Order & Warranty System: `checkWarranty` (→ `GET /api/equipment/{assetId}/warranty`) and `createWorkOrder` (→ `POST /api/workorders`).
-- Redeploy the app to Azure App Service.
+- Switch to VS Code (this repo is open). The two endpoints — `checkWarranty` (`GET /api/checkWarranty`) and `createWorkOrder` (`POST /api/createWorkOrder`) — already exist in the Work Order & Warranty System; walk through them, then have **GitHub Copilot generate the OpenAPI connector spec live**.
+- The app is already deployed; redeploy only if you edit the routes.
 - **Use the exact prompts and commands in [Building, deploying & connecting the Azure Functions](#building-deploying--connecting-the-azure-functions) below.**
 
 ### 4. Connect the new capability (2 min)
@@ -65,21 +65,18 @@ This is the detailed script for demo steps 3 and 4. It creates **two HTTP-trigge
 - Azure CLI (`az`) installed and signed in.
 - The **`webAppName`** / **`apiBaseUrl`** from Part C of [setup_guide.md](./setup_guide.md) (e.g. `https://app-contosowo-xxxx.azurewebsites.net/api`).
 
-### Step A — Generate the endpoints with GitHub Copilot
+### Step A — Show the code, then build the connector spec live with GitHub Copilot
 
-With this repo open, open Copilot Chat (agent mode) and use these prompts one at a time.
+The two endpoints already exist in [../workorder-system/server.js](../workorder-system/server.js) — open the file and walk the audience through them (they reuse `store.getWarranty` and `store.createWorkOrder`):
 
-**Prompt 1 — add the warranty endpoint**
+- **`checkWarranty`** — `GET /api/checkWarranty?assetId=...` (HTTP 400 if `assetId` is missing, 404 if unknown).
+- **`createWorkOrder`** — `POST /api/createWorkOrder` with a JSON body (`assetId`, `title`, `priority`, `description`, `requestedBy`); HTTP 400 if `assetId`/`title` missing, 201 on success.
 
-> In `workorder-system/server.js`, add an HTTP-triggered route `GET /api/checkWarranty` that reads an `assetId` query parameter and returns the warranty status from the store (reuse `store.getWarranty`). If `assetId` is missing, return HTTP 400; if the asset is not found, return HTTP 404.
+**Now build the connector spec live.** Open Copilot Chat (agent mode) and run this single prompt — this is the on-stage "watch Copilot build it" moment:
 
-**Prompt 2 — add the create-work-order endpoint**
+> Look at the `GET /api/checkWarranty` and `POST /api/createWorkOrder` routes in `workorder-system/server.js` and the data shapes returned by `workorder-system/lib/store.js`. Generate an **OpenAPI 2.0 (Swagger)** file named `workorder-system/openapi.json` describing both endpoints, with `host` set to `app-contosowo-mvjskqas3y4lo.azurewebsites.net`, `basePath` `/api`, request/response schemas, and example responses, so it can be imported as a custom connector in Copilot Studio.
 
-> In the same `server.js`, add a route `POST /api/createWorkOrder` that accepts a JSON body containing `assetId`, `title`, `priority`, `description`, and `requestedBy`, and creates a work order via `store.createWorkOrder`. Validate that `assetId` and `title` are present, returning HTTP 400 otherwise, and return the created work order with HTTP 201.
-
-**Prompt 3 — an OpenAPI definition**
-
-> Generate an **OpenAPI 2.0 (Swagger)** file named `workorder-system/openapi.json` describing both endpoints (`GET /api/checkWarranty` and `POST /api/createWorkOrder`), including parameters and example responses, so it can be imported as a custom connector in Copilot Studio.
+> Presenter fallback: a known-good copy is saved as `workorder-system/openapi.reference.json`. If the live generation misbehaves, copy it over `workorder-system/openapi.json` and continue.
 
 > Tip: Verify locally before deploying — run `npm start` in the `workorder-system` folder and call `http://localhost:3000/api/checkWarranty?assetId=CE-OSC-1200`.
 
