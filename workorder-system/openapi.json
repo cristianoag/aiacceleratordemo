@@ -1,0 +1,305 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Contoso Maintenance Actions",
+    "description": "Endpoints on the Contoso Work Order & Warranty System (Azure App Service) that let the Copilot Studio agent check warranty status and create work orders.",
+    "version": "1.0.0"
+  },
+  "host": "app-contosowo-mvjskqas3y4lo.azurewebsites.net",
+  "basePath": "/api",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/checkWarranty": {
+      "get": {
+        "operationId": "checkWarranty",
+        "summary": "Check equipment warranty status",
+        "description": "Checks the warranty status of a piece of equipment by its asset ID (e.g., CE-OSC-1200). Returns whether it is under warranty and the number of days remaining.",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The asset ID of the equipment to check (e.g., CE-OSC-1200)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Warranty status for the requested asset.",
+            "schema": {
+              "$ref": "#/definitions/Warranty"
+            },
+            "examples": {
+              "application/json": {
+                "assetId": "CE-OSC-1200",
+                "name": "Digital Storage Oscilloscope",
+                "model": "Contoso WaveView DSO-4000X",
+                "warrantyProvider": "Contoso Instruments Division",
+                "installDate": "2023-03-14",
+                "warrantyExpiry": "2027-03-14",
+                "underWarranty": true,
+                "status": "Active",
+                "daysRemaining": 249,
+                "supportContact": "test.equipment.support@contoso.com",
+                "checkedAt": "2026-07-09T12:00:00.000Z"
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required assetId query parameter.",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            },
+            "examples": {
+              "application/json": {
+                "error": "The \"assetId\" query parameter is required."
+              }
+            }
+          },
+          "404": {
+            "description": "Equipment not found.",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            },
+            "examples": {
+              "application/json": {
+                "error": "Equipment 'CE-XYZ-0000' not found."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/createWorkOrder": {
+      "post": {
+        "operationId": "createWorkOrder",
+        "summary": "Create a maintenance work order",
+        "description": "Creates a maintenance work order for a piece of equipment. Requires the asset ID and a short title; accepts priority, description, and requestedBy.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WorkOrderRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The created work order.",
+            "schema": {
+              "$ref": "#/definitions/WorkOrder"
+            },
+            "examples": {
+              "application/json": {
+                "id": "WO-2026-0007",
+                "assetId": "CE-LAS-3300",
+                "equipmentName": "CO2 Laser Cutter",
+                "equipmentModel": "LC-1390 Pro",
+                "location": "Fabrication Bay 2",
+                "title": "Laser cutter needs service",
+                "description": "Beam alignment drifting; schedule maintenance.",
+                "priority": "High",
+                "status": "Open",
+                "requestedBy": "Copilot Agent",
+                "assignedTo": null,
+                "underWarrantyAtCreation": false,
+                "createdAt": "2026-07-09T12:00:00.000Z",
+                "updatedAt": "2026-07-09T12:00:00.000Z",
+                "notes": []
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (missing assetId or title, or invalid priority).",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            },
+            "examples": {
+              "application/json": {
+                "error": "The \"assetId\" and \"title\" fields are required."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Warranty": {
+      "type": "object",
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "example": "CE-OSC-1200"
+        },
+        "name": {
+          "type": "string",
+          "example": "Digital Storage Oscilloscope"
+        },
+        "model": {
+          "type": "string",
+          "example": "Contoso WaveView DSO-4000X"
+        },
+        "warrantyProvider": {
+          "type": "string",
+          "example": "Contoso Instruments Division"
+        },
+        "installDate": {
+          "type": "string",
+          "example": "2023-03-14"
+        },
+        "warrantyExpiry": {
+          "type": "string",
+          "example": "2027-03-14"
+        },
+        "underWarranty": {
+          "type": "boolean",
+          "example": true
+        },
+        "status": {
+          "type": "string",
+          "example": "Active"
+        },
+        "daysRemaining": {
+          "type": "integer",
+          "example": 249
+        },
+        "supportContact": {
+          "type": "string",
+          "example": "test.equipment.support@contoso.com"
+        },
+        "checkedAt": {
+          "type": "string",
+          "example": "2026-07-09T12:00:00.000Z"
+        }
+      }
+    },
+    "WorkOrderRequest": {
+      "type": "object",
+      "required": [
+        "assetId",
+        "title"
+      ],
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "description": "The asset ID of the equipment (e.g., CE-LAS-3300).",
+          "example": "CE-LAS-3300"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short summary of the work to be done.",
+          "example": "Laser cutter needs service"
+        },
+        "priority": {
+          "type": "string",
+          "description": "Work order priority.",
+          "enum": [
+            "Low",
+            "Medium",
+            "High",
+            "Critical"
+          ],
+          "example": "High"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the issue.",
+          "example": "Beam alignment drifting; schedule maintenance."
+        },
+        "requestedBy": {
+          "type": "string",
+          "description": "Name of the person or system requesting the work order.",
+          "example": "Copilot Agent"
+        }
+      }
+    },
+    "WorkOrder": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "example": "WO-2026-0007"
+        },
+        "assetId": {
+          "type": "string",
+          "example": "CE-LAS-3300"
+        },
+        "equipmentName": {
+          "type": "string",
+          "example": "CO2 Laser Cutter"
+        },
+        "equipmentModel": {
+          "type": "string",
+          "example": "LC-1390 Pro"
+        },
+        "location": {
+          "type": "string",
+          "example": "Fabrication Bay 2"
+        },
+        "title": {
+          "type": "string",
+          "example": "Laser cutter needs service"
+        },
+        "description": {
+          "type": "string",
+          "example": "Beam alignment drifting; schedule maintenance."
+        },
+        "priority": {
+          "type": "string",
+          "example": "High"
+        },
+        "status": {
+          "type": "string",
+          "example": "Open"
+        },
+        "requestedBy": {
+          "type": "string",
+          "example": "Copilot Agent"
+        },
+        "assignedTo": {
+          "type": "string",
+          "x-nullable": true,
+          "example": null
+        },
+        "underWarrantyAtCreation": {
+          "type": "boolean",
+          "example": false
+        },
+        "createdAt": {
+          "type": "string",
+          "example": "2026-07-09T12:00:00.000Z"
+        },
+        "updatedAt": {
+          "type": "string",
+          "example": "2026-07-09T12:00:00.000Z"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string",
+          "example": "The \"assetId\" query parameter is required."
+        }
+      }
+    }
+  }
+}

@@ -82,6 +82,16 @@ app.get('/api/warranty', (req, res) => {
   res.json(warranty);
 });
 
+// Alias matching the Copilot Studio connector operation 'checkWarranty'.
+app.get('/api/checkWarranty', (req, res) => {
+  if (!req.query.assetId) {
+    return res.status(400).json({ error: 'The "assetId" query parameter is required.' });
+  }
+  const warranty = store.getWarranty(req.query.assetId);
+  if (!warranty) return res.status(404).json({ error: `Equipment '${req.query.assetId}' not found.` });
+  res.json(warranty);
+});
+
 // ---------------------------------------------------------------------------
 // Work orders
 // ---------------------------------------------------------------------------
@@ -97,6 +107,17 @@ app.get('/api/workorders/:id', (req, res) => {
 
 app.post('/api/workorders', (req, res) => {
   const result = store.createWorkOrder(req.body || {});
+  if (result.errors) return res.status(400).json({ errors: result.errors });
+  res.status(201).json(result.workOrder);
+});
+
+// Alias matching the Copilot Studio connector operation 'createWorkOrder'.
+app.post('/api/createWorkOrder', (req, res) => {
+  const body = req.body || {};
+  if (!body.assetId || !body.title) {
+    return res.status(400).json({ error: 'The "assetId" and "title" fields are required.' });
+  }
+  const result = store.createWorkOrder(body);
   if (result.errors) return res.status(400).json({ errors: result.errors });
   res.status(201).json(result.workOrder);
 });
