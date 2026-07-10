@@ -66,17 +66,7 @@ If **Learning** mode is enough for your demo, you can skip step 3 and go straigh
 
 ---
 
-## 4. Let Azure AI Search index the blobs
-
-Once the storage account is perimeter-secured, the **AI Search indexer** is also blocked unless you allow it. Pick one:
-
-- **Easiest:** keep the association in **Learning** mode while you build/run the indexer, then switch to Enforced afterward, **or**
-- Add the **Search service** as a resource **inside the same perimeter** (perimeter → **Resources → Associate** → select your Search service). Traffic between resources in the same perimeter flows freely, **or**
-- Add an **inbound rule** on the profile allowing the Search service's subscription (**Source type: Subscriptions**).
-
----
-
-## 5. Upload the PDFs
+## 4. Upload the PDFs
 
 After Learning mode is on (or your IP rule is active), upload the 8 PDFs from [../artifacts](../artifacts):
 
@@ -100,13 +90,4 @@ az role assignment create `
 
 Or upload via the portal (**Containers → equipment-docs → Upload**) / Azure Storage Explorer once the perimeter allows your IP.
 
----
 
-## Quick checklist
-
-- [ ] Network Security Perimeter created (`nsp-contoso-equipment`)
-- [ ] Storage account associated (**Secured by perimeter**)
-- [ ] Association in **Learning** mode (works now) or **Enforced** + inbound IP rule
-- [ ] AI Search allowed (same perimeter, subscription rule, or Learning mode during indexing)
-- [ ] **Storage Blob Data Contributor** role on the account
-- [ ] PDFs uploaded to the `equipment-docs` container
