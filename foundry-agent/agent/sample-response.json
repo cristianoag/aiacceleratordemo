@@ -1,0 +1,32 @@
+{
+  "riskScore": 78,
+  "riskLevel": "Critical",
+  "confidence": 0.82,
+  "recommendedAction": "Take CE-LAS-3300 out of production for a laser tube power measurement and full optical path alignment within the week, and request a service-contract quote from Contoso Fabrication Systems before any parts are ordered.",
+  "recommendedPriority": "Critical",
+  "recommendedWithinDays": 5,
+  "rationale": "Two work orders in the last 90 days against a mean interval of 78 days shows the failure cadence is accelerating, and the newest ticket (incomplete cuts on 6 mm acrylic) is a classic laser tube power-loss symptom rather than an isolated fault. Two of the four historical work orders are still open, so the underlying degradation has never been closed out. The warranty expired on 2025-08-22, so any repair is billable and should be quoted before the machine fails mid-job.",
+  "riskFactors": [
+    {
+      "factor": "Accelerating failure cadence",
+      "impact": "High",
+      "detail": "2 work orders in the last 90 days versus a 78-day mean interval across the asset's life."
+    },
+    {
+      "factor": "Tube power-loss symptom",
+      "impact": "High",
+      "detail": "WO-2026-0009 (2026-08-07) reports incomplete cuts, the leading indicator of CO2 tube end-of-life."
+    },
+    {
+      "factor": "Unresolved backlog",
+      "impact": "Medium",
+      "detail": "2 of 4 work orders remain Open, including a beam alignment drift raised on 2026-06-24."
+    },
+    {
+      "factor": "No warranty cover",
+      "impact": "Medium",
+      "detail": "Warranty expired 361 days ago (2025-08-22), so repairs are billable and need vendor quoting."
+    }
+  ],
+  "suggestedWorkOrderTitle": "Laser tube power check and optical realignment"
+}

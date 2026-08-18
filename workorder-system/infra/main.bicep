@@ -46,6 +46,17 @@ param nodeVersion string = '22-lts'
 @secure()
 param apiKey string = ''
 
+@description('Optional Azure AI Foundry project endpoint that hosts the Predictive Maintenance Insights agent (projectEndpoint output of foundry-agent/infra/main.bicep). Leave empty to run POST /api/foundry/predict on the built-in heuristic.')
+param foundryProjectEndpoint string = ''
+
+@description('Optional Foundry agent name created by foundry-agent/scripts/create-agent.js (e.g. predictive-maintenance-insights).')
+param foundryAgentName string = ''
+
+@description('Max time in milliseconds to wait for a Foundry agent run before falling back to the heuristic score.')
+param foundryTimeoutMs int = 45000
+
+var foundryConfigured = !empty(foundryProjectEndpoint) && !empty(foundryAgentName)
+
 var suffix = uniqueString(resourceGroup().id)
 var planName = 'plan-${appName}-${suffix}'
 var webAppName = 'app-${appName}-${suffix}'
@@ -137,6 +148,19 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'API_KEY'
           value: apiKey
         }
+      ], !foundryConfigured ? [] : [
+        {
+          name: 'FOUNDRY_PROJECT_ENDPOINT'
+          value: foundryProjectEndpoint
+        }
+        {
+          name: 'FOUNDRY_AGENT_NAME'
+          value: foundryAgentName
+        }
+        {
+          name: 'FOUNDRY_TIMEOUT_MS'
+          value: string(foundryTimeoutMs)
+        }
       ])
     }
   }
@@ -149,4 +173,8 @@ output webAppName string = webApp.name
 output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
 output apiBaseUrl string = 'https://${webApp.properties.defaultHostName}/api'
 output warrantyCheckExample string = 'https://${webApp.properties.defaultHostName}/api/equipment/CE-OSC-1200/warranty'
+output predictExample string = 'https://${webApp.properties.defaultHostName}/api/foundry/predict'
 output appInsightsName string = appInsights.name
+
+@description('Pass this to foundry-agent/infra/main.bicep as webAppPrincipalId so the app can call the Foundry agent with its managed identity.')
+output webAppPrincipalId string = webApp.identity.principalId

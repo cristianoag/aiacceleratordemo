@@ -11,6 +11,7 @@ This guide walks through setting up the full demo environment:
 3. **Agent** — a **Microsoft Copilot Studio** agent that connects to the knowledge sources (and later, the deployed system via an Azure Function).
 4. **Artifact generation** — a **Copilot Cowork plugin** ([../cowork-plugin](../cowork-plugin)) that generates PowerPoint decks/reports from live Work Order & Warranty System data.
 5. **(Optional) Business data** — a **Dataverse** table (service contracts, vendors, SLA, cost) so the agent can combine operational API data with enterprise business data in one answer.
+6. **Predictive intelligence** — an **Azure AI Foundry** project and agent ([../foundry-agent](../foundry-agent)) that scores failure risk from the same equipment data and is called by the system's `POST /api/foundry/predict` endpoint.
 
 Using two knowledge sources demonstrates that the agent can reason over knowledge no matter where it lives, and the deployed system shows the agent taking real business actions.
 
@@ -29,6 +30,7 @@ Using two knowledge sources demonstrates that the agent can reason over knowledg
 | Azure AI Search | Basic tier or higher (Semantic ranking requires Basic+) |
 | Azure Storage account | To hold the PDF documents for indexing |
 | Azure App Service | For the Work Order & Warranty System (provisioned via Bicep in Part C). Defaults to the **F1 Free** tier, which needs no VM quota. |
+| Azure AI Foundry | For the predictive maintenance agent (provisioned via Bicep in Part G). Requires quota for a `gpt-4.1-mini` deployment in the chosen region. |
 | Node.js 18+ | To run/deploy the Work Order & Warranty System |
 | Azure CLI | Required for the Bicep deployment (`az`) |
 | Copilot Cowork | A Microsoft 365 account with **Copilot Cowork** access (for the plugin) |
@@ -304,7 +306,119 @@ Sample rows are in [../dataverse/equipment-service-contracts.csv](../dataverse/e
 
 ---
 
-## 8. Prepare for the "Extend with code" step
+## 8. Part G — Deploy the Azure AI Foundry predictive maintenance agent
+
+This part provisions an **Azure AI Foundry** project and the **Predictive Maintenance Insights** agent ([../foundry-agent](../foundry-agent)), then wires it to the Work Order & Warranty System so `POST {apiBaseUrl}/foundry/predict` returns a live risk score. It powers run-of-show step 6, where Foundry, GitHub Copilot, and Copilot Studio all appear in one user turn. Full details: [../foundry-agent/README.md](../foundry-agent/README.md).
+
+> **Prerequisite:** Part C is complete (the App Service is deployed and you have its `webAppName`).
+
+### 8.1 Provision the Foundry resource, project, and model
+
+Deploy into the **same resource group** as the Work Order & Warranty System so everything tears down together.
+
+```powershell
+# From the repository root
+az deployment group create `
+  -g rg-contoso-workorders `
+  -f foundry-agent/infra/main.bicep `
+  -p foundry-agent/infra/main.parameters.json
+```
+
+Record the **`projectEndpoint`** output, e.g. `https://aif-contosowo-xxxx.services.ai.azure.com/api/projects/proj-predictive-maintenance`.
+
+> **Region.** The template defaults to `eastus` and restricts `location` to regions that carry `gpt-4.1-mini`. The Foundry resource does **not** have to match the App Service region — if Part C landed in `westus2`, leave this at `eastus`.
+>
+> **Getting `ServiceModelDeprecating`?** Azure blocks new deployments of models that are being retired. List what is currently deployable and update `modelName` / `modelVersion` in [../foundry-agent/infra/main.parameters.json](../foundry-agent/infra/main.parameters.json):
+>
+> ```powershell
+> az cognitiveservices model list -l eastus `
+>   --query "[?kind=='AIServices' && contains(model.name, 'mini')].{name:model.name, version:model.version}" -o table
+> ```
+>
+> **Cost.** `GlobalStandard` is pay-as-you-go with no reserved capacity (there is no free tier for `AIServices`). The demo makes a handful of small calls.
+>
+> API keys are disabled on the resource (`disableLocalAuth: true`) — everything authenticates through Entra ID.
+
+### 8.2 Grant access to the agent
+
+Re-run the deployment with the Web App's managed identity so it gets the **Foundry User** role (role ID `53ca6127-db72-4b80-b1b0-d745d6d5456d`, formerly named *Azure AI User*):
+
+```powershell
+$principalId = az webapp identity show `
+  -g rg-contoso-workorders `
+  -n <webAppName-from-Part-C> `
+  --query principalId -o tsv
+
+az deployment group create `
+  -g rg-contoso-workorders `
+  -f foundry-agent/infra/main.bicep `
+  -p foundry-agent/infra/main.parameters.json `
+  -p webAppPrincipalId=$principalId
+```
+
+**Your own account needs the same role** to create the agent in 8.3. Assign it by role ID — `--role "Azure AI User"` fails because the role was renamed:
+
+```powershell
+$me = az ad signed-in-user show --query id -o tsv
+$scope = az cognitiveservices account show -g rg-contoso-workorders -n <foundryResourceName> --query id -o tsv
+az role assignment create --assignee-object-id $me --assignee-principal-type User `
+  --role "53ca6127-db72-4b80-b1b0-d745d6d5456d" --scope $scope
+```
+
+### 8.3 Create the agent
+
+```powershell
+cd foundry-agent
+npm install
+$env:FOUNDRY_PROJECT_ENDPOINT = "<projectEndpoint from 8.1>"
+npm run create-agent
+```
+
+The agent is referenced by **name** (`predictive-maintenance-insights`), not by an ID. Its system prompt lives in [../foundry-agent/agent/instructions.md](../foundry-agent/agent/instructions.md) — re-run the script after editing it to publish a new version of the agent.
+
+Optionally smoke-test Foundry on its own, before involving the App Service:
+
+```powershell
+npm run test-agent
+```
+
+### 8.4 Wire it into the Work Order & Warranty System
+
+```powershell
+az webapp config appsettings set `
+  -g rg-contoso-workorders `
+  -n <webAppName-from-Part-C> `
+  --settings `
+    FOUNDRY_PROJECT_ENDPOINT="<projectEndpoint>" `
+    FOUNDRY_AGENT_NAME="predictive-maintenance-insights"
+```
+
+(Equivalently, set the `foundryProjectEndpoint` / `foundryAgentName` parameters in [../workorder-system/infra/main.parameters.json](../workorder-system/infra/main.parameters.json) and redeploy Part C.)
+
+Then redeploy the app code so the `/api/foundry/predict` route is live:
+
+```powershell
+cd workorder-system
+az webapp up --name <webAppName-from-Part-C> --resource-group rg-contoso-workorders --runtime "NODE:22-lts"
+```
+
+### 8.5 Verify
+
+```powershell
+# Expect foundryConfigured : True
+Invoke-RestMethod "<apiBaseUrl>/health"
+
+Invoke-RestMethod -Method POST "<apiBaseUrl>/foundry/predict" `
+  -ContentType "application/json" `
+  -Body '{ "assetId": "CE-LAS-3300" }'
+```
+
+Expect a `riskScore`, `riskLevel`, `recommendedAction`, and **`"source": "azure-ai-foundry"`**.
+
+> If `source` is `local-heuristic`, the app fell back to its built-in deterministic score. Check the two app settings and the role assignment from 8.2, and read `fallbackReason` in the response. The demo still works either way — but for the Foundry story you want `azure-ai-foundry`.
+---
+
+## 9. Prepare for the "Extend with code" step
 
 During the demo you build an **Azure Function** that calls the Work Order & Warranty System deployed in Part C, then add it as a tool in Copilot Studio. To be ready:
 
@@ -319,11 +433,11 @@ See [demo_guide.md](./demo_guide.md) for the full run-of-show and sample questio
 
 ---
 
-## 9. Teardown
+## 10. Teardown
 
 After the demo, to avoid charges:
 
-- Delete the resource group holding the Work Order & Warranty System (`rg-contoso-workorders`) and the Azure Function.
+- Delete the resource group holding the Work Order & Warranty System (`rg-contoso-workorders`) and the Azure Function. This also removes the Azure AI Foundry resource, project, and model deployment if you deployed Part G into the same group.
 - Delete the Azure AI Search service and storage account (or their resource group).
 - Uninstall the Cowork plugin: `atk uninstall --title-id <TitleId>` (or remove it from the M365 admin center), using the `TitleId` saved during install.
 - If you added Part F, delete the **Equipment Service Contract** Dataverse table from the Power Apps maker portal.

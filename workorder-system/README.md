@@ -20,6 +20,7 @@ dashboard visualizes equipment, warranty status, and work orders during the demo
 workorder-system/
 ├── server.js                # Express app (API + static dashboard)
 ├── lib/store.js             # Data store + warranty logic
+├── lib/foundry.js           # Azure AI Foundry predictive-maintenance integration
 ├── data/equipment.json      # Seeded equipment + warranty data (15 assets)
 ├── public/                  # Dashboard UI (index.html, styles.css, app.js)
 ├── infra/
@@ -57,8 +58,50 @@ Base URL: `<app-url>/api`
 | GET | `/workorders/{id}` | Get one work order. |
 | POST | `/workorders` | Create a work order. |
 | PATCH | `/workorders/{id}` | Update status / priority / assignee / add note. |
+| POST | `/foundry/predict` | **Predictive maintenance** — risk score + recommended action from the Azure AI Foundry agent. |
 | GET | `/stats` | Dashboard summary counts. |
 | POST | `/mcp` | MCP endpoint (Streamable HTTP, JSON-RPC 2.0) used by the Copilot Cowork plugin. |
+
+### Predictive maintenance (Azure AI Foundry)
+
+`POST /api/foundry/predict` assembles the asset's warranty status, engineered
+signals, and recent work-order history and hands them to the **Predictive
+Maintenance Insights** agent running in **Azure AI Foundry Agent Service** (see
+[../foundry-agent](../foundry-agent)). Implementation:
+[lib/foundry.js](./lib/foundry.js).
+
+Request:
+
+```json
+{ "assetId": "CE-LAS-3300", "historyLimit": 5 }
+```
+
+Response (abridged):
+
+```json
+{
+  "assetId": "CE-LAS-3300",
+  "equipmentName": "CO2 Laser Cutter",
+  "warrantyStatus": "Expired",
+  "riskScore": 78,
+  "riskLevel": "Critical",
+  "confidence": 0.82,
+  "recommendedAction": "Take CE-LAS-3300 out of production for a laser tube power measurement within the week.",
+  "recommendedPriority": "Critical",
+  "recommendedWithinDays": 5,
+  "suggestedWorkOrderTitle": "Laser tube power check and optical realignment",
+  "source": "azure-ai-foundry"
+}
+```
+
+Configured with the `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_AGENT_NAME` app
+settings (the `foundryProjectEndpoint` / `foundryAgentName` Bicep parameters).
+When they are unset — or a Foundry call fails — the endpoint returns the same
+schema computed by a deterministic heuristic and flags it with
+`"source": "local-heuristic"`, so the demo never dead-ends. Authentication to
+Foundry uses the Web App's **system-assigned managed identity**; grant it the
+**Foundry User** role as described in
+[../foundry-agent/README.md](../foundry-agent/README.md).
 
 ### MCP connector
 
@@ -128,6 +171,19 @@ Set the `API_KEY` app setting (or the `apiKey` Bicep parameter) to require an
 `x-api-key` header on all `/api` routes except `/api/health`. Leave it empty for
 open demo access.
 
+### Environment variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PORT` | `3000` | Listen port (set by App Service). |
+| `API_KEY` | *(empty)* | Requires `x-api-key` on `/api` routes when set. |
+| `CORS_ORIGIN` | `*` | Allowed origin for browser callers. |
+| `WORKORDER_DATA_FILE` | `data/workorders.json` | Writable work-order store. |
+| `FOUNDRY_PROJECT_ENDPOINT` | *(empty)* | Azure AI Foundry project endpoint. |
+| `FOUNDRY_AGENT_NAME` | *(empty)* | Foundry agent name, e.g. `predictive-maintenance-insights`. |
+| `FOUNDRY_TIMEOUT_MS` | `45000` | Max wait for a Foundry response. |
+| `FOUNDRY_FALLBACK` | on | Set to `off` to fail instead of using the heuristic. |
+
 ---
 
 ## Deploy to Azure
@@ -180,6 +236,15 @@ server during deployment.
 
 - Open `webAppUrl` for the dashboard.
 - Call the warranty example URL, e.g. `.../api/equipment/CE-OSC-1200/warranty`.
+
+### 4. (Optional) Connect the Azure AI Foundry agent
+
+Deploy [../foundry-agent/infra/main.bicep](../foundry-agent/infra/main.bicep)
+into the same resource group, grant this app's managed identity (`webAppPrincipalId`
+output) the **Foundry User** role, create the agent, then set
+`foundryProjectEndpoint` / `foundryAgentName` here and redeploy — or set the app
+settings directly. Full walkthrough:
+[../foundry-agent/README.md](../foundry-agent/README.md).
 
 ---
 

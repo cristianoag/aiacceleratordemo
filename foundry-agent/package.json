@@ -1,0 +1,19 @@
+{
+  "name": "contoso-foundry-predictive-maintenance",
+  "version": "1.0.0",
+  "description": "Azure AI Foundry 'Predictive Maintenance Insights' agent for the AI Solution Accelerator demo.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "create-agent": "node scripts/create-agent.js",
+    "test-agent": "node scripts/test-agent.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0"
+  },
+  "author": "Contoso Electronics",
+  "license": "MIT"
+}

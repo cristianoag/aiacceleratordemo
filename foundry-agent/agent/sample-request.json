@@ -1,0 +1,61 @@
+{
+  "asset": {
+    "assetId": "CE-LAS-3300",
+    "name": "CO2 Laser Cutter",
+    "model": "Contoso PrecisionCut LC-150",
+    "category": "Fabrication",
+    "location": "Enclosure Fabrication Shop - Bay 2",
+    "manufacturer": "Contoso Fabrication Systems",
+    "installDate": "2022-08-22"
+  },
+  "warranty": {
+    "status": "Expired",
+    "underWarranty": false,
+    "warrantyExpiry": "2025-08-22",
+    "daysRemaining": -361,
+    "warrantyProvider": "Contoso Fabrication Systems",
+    "supportContact": "fab.support@contoso.com"
+  },
+  "signals": {
+    "ageYears": 4,
+    "totalWorkOrders": 4,
+    "openWorkOrders": 2,
+    "highOrCriticalWorkOrders": 3,
+    "workOrdersLast90Days": 2,
+    "workOrdersLast365Days": 3,
+    "daysSinceLastWorkOrder": 11,
+    "meanDaysBetweenWorkOrders": 78
+  },
+  "workOrderHistory": [
+    {
+      "id": "WO-2026-0009",
+      "title": "Incomplete cuts on 6 mm acrylic",
+      "description": "Operator reports beam not cutting through; suspect tube power loss.",
+      "priority": "High",
+      "status": "Open",
+      "createdAt": "2026-08-07T09:12:00.000Z"
+    },
+    {
+      "id": "WO-2026-0006",
+      "title": "Beam alignment drift after mirror clean",
+      "description": "Alignment drifting between shifts.",
+      "priority": "Medium",
+      "status": "Open",
+      "createdAt": "2026-06-24T14:40:00.000Z"
+    },
+    {
+      "id": "WO-2026-0002",
+      "title": "Exhaust blower vibration",
+      "description": "Blower bearing noise under load.",
+      "priority": "High",
+      "status": "Completed",
+      "createdAt": "2026-02-18T08:05:00.000Z"
+    }
+  ],
+  "baseline": {
+    "riskScore": 71,
+    "riskLevel": "High",
+    "method": "local-heuristic"
+  },
+  "asOf": "2026-08-18T10:00:00.000Z"
+}

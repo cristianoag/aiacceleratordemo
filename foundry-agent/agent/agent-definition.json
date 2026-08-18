@@ -1,0 +1,20 @@
+{
+  "name": "predictive-maintenance-insights",
+  "description": "Reasons over an asset's warranty status and recent work-order history from the Contoso Work Order & Warranty System and returns a risk score plus a recommended maintenance action.",
+  "instructionsFile": "instructions.md",
+  "definition": {
+    "kind": "prompt",
+    "temperature": 0.2,
+    "top_p": 0.95,
+    "text": {
+      "format": {
+        "type": "json_object"
+      }
+    }
+  },
+  "metadata": {
+    "solution": "ai-solution-accelerator-demo",
+    "capability": "predictive-maintenance",
+    "consumedBy": "workorder-system POST /api/foundry/predict"
+  }
+}

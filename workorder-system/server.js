@@ -15,6 +15,7 @@
 const express = require('express');
 const path = require('path');
 const store = require('./lib/store');
+const foundry = require('./lib/foundry');
 const { handleMcpRequest } = require('./lib/mcp');
 
 const app = express();
@@ -49,7 +50,12 @@ app.use('/api', (req, res, next) => {
 // Health
 // ---------------------------------------------------------------------------
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'contoso-workorder-system', time: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'contoso-workorder-system',
+    foundryConfigured: foundry.isConfigured(),
+    time: new Date().toISOString(),
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -127,6 +133,27 @@ app.patch('/api/workorders/:id', (req, res) => {
   if (result.notFound) return res.status(404).json({ error: `Work order '${req.params.id}' not found.` });
   if (result.errors) return res.status(400).json({ errors: result.errors });
   res.json(result.workOrder);
+});
+
+// ---------------------------------------------------------------------------
+// Predictive maintenance (Azure AI Foundry agent)
+// ---------------------------------------------------------------------------
+// Matches the Copilot Studio connector operation 'predictMaintenance'.
+app.post('/api/foundry/predict', async (req, res) => {
+  const body = req.body || {};
+  if (!body.assetId) {
+    return res.status(400).json({ error: 'The "assetId" field is required.' });
+  }
+  try {
+    const result = await foundry.predict(body);
+    if (result.notFound) {
+      return res.status(404).json({ error: `Equipment '${body.assetId}' not found.` });
+    }
+    res.json(result.prediction);
+  } catch (err) {
+    console.error('Predictive maintenance request failed:', err);
+    res.status(502).json({ error: `Prediction failed: ${err.message}` });
+  }
 });
 
 // ---------------------------------------------------------------------------

@@ -16,6 +16,7 @@ This guide is the presenter script for the demo described in [demo_proposal.md](
 - [ ] VS Code open with the repo and GitHub Copilot enabled (for the "extend with code" step).
 - [ ] Azure subscription signed in for redeploying the Work Order & Warranty System.
 - [ ] Work order dashboard open in a browser tab to show live updates.
+- [ ] **Azure AI Foundry agent (Predictive Maintenance Insights) deployed** and `GET {apiBaseUrl}/health` returns `"foundryConfigured": true` (for the predictive step). See [setup_guide.md](./setup_guide.md) Part G.
 - [ ] **Copilot Cowork plugin (Contoso Equipment Insights) installed and enabled** (for the deck-generation finale). See [setup_guide.md](./setup_guide.md) Part E.
 - [ ] Test pane pre-loaded with one warm-up question.
 
@@ -44,7 +45,12 @@ Set the scene: a maintenance manager at Contoso Electronics needs an assistant t
 - The agent reasons over the documents, calls the operation (which writes to the deployed system), and returns an actionable answer.
 - Switch to the **work order dashboard** to show the new work order appear live.
 
-### 6. (Optional finale) Generate a deck with Copilot Cowork (1 min)
+### 6. Predictive intelligence with Azure AI Foundry (2 min)
+- Ask the agent to **predict** which maintenance an asset needs next. Copilot Studio calls `predictMaintenance`, the App Service calls the **Azure AI Foundry** agent, and a risk score plus recommended action comes back.
+- Then say "open that work order" — the agent chains the Foundry recommendation straight into `createWorkOrder`.
+- **Three Microsoft AI surfaces in one sentence:** Foundry reasons, GitHub Copilot built the contract, Copilot Studio orchestrates. Script: [Adding predictive maintenance with Azure AI Foundry](#adding-predictive-maintenance-with-azure-ai-foundry).
+
+### 7. (Optional finale) Generate a deck with Copilot Cowork (1 min)
 - Switch to **Copilot Cowork** and prompt it to build an equipment status PowerPoint.
 - The **Contoso Equipment Insights** plugin pulls live data from the same system and produces a deck — see [Generating a PowerPoint with Copilot Cowork](#generating-a-powerpoint-with-copilot-cowork).
 
@@ -140,6 +146,114 @@ In the **Test** pane, run the Section D questions below (e.g., "Is CE-OSC-1200 u
 
 ---
 
+## Adding predictive maintenance with Azure AI Foundry
+
+This is the detailed script for run-of-show step 6 — the moment where **Azure AI Foundry**, **GitHub Copilot**, and **Copilot Studio** are visibly working together in a single user turn.
+
+| Surface | What it does here |
+|---------|-------------------|
+| **Azure AI Foundry** (Agent Service) | The **Predictive Maintenance Insights** agent reasons over the asset's warranty status and recent work-order history and returns a risk score + recommended action. |
+| **GitHub Copilot** | Generates the OpenAPI operation (`predictMaintenance`) that exposes it — same live-coding move as `checkWarranty` / `createWorkOrder`. |
+| **Copilot Studio** | Calls the operation as a tool, then chains the recommendation into `createWorkOrder`. |
+
+The Foundry agent is called **server-side** by the Work Order & Warranty System, not directly by Copilot Studio. Worth saying out loud: the prompt payload is assembled from the system of record (not from the chat transcript), authentication is a **managed identity** rather than a key in the connector, and there is a deterministic fallback if Foundry is unreachable.
+
+```mermaid
+sequenceDiagram
+    participant U as Maintenance Manager
+    participant CS as Copilot Studio agent
+    participant API as Work Order System<br/>(App Service)
+    participant F as Azure AI Foundry agent
+
+    U->>CS: "What maintenance will the laser cutter need next?"
+    CS->>API: POST /api/foundry/predict { assetId }
+    API->>API: Assemble warranty + work-order history + signals
+    API->>F: Responses API, agent_reference (managed identity)
+    F-->>API: riskScore, riskLevel, recommendedAction
+    API-->>CS: Prediction JSON
+    CS->>API: POST /api/createWorkOrder (chained)
+    CS-->>U: "Critical risk (78). I've opened WO-2026-00xx."
+```
+
+**Prerequisite:** the Foundry project and agent are deployed and wired to the App Service per [setup_guide.md](./setup_guide.md) Part G / [../foundry-agent/README.md](../foundry-agent/README.md).
+
+### Step A — Show the endpoint, then extend the connector spec with GitHub Copilot
+
+Open [../workorder-system/lib/foundry.js](../workorder-system/lib/foundry.js) and walk the audience through the three things it does — this is a 30-second read, not a code review:
+
+1. **Assembles the evidence** — pulls the asset, computed warranty, and recent work orders from the same store the other two operations use, then engineers signals (age in years, work orders in the last 90/365 days, open and high/critical counts, mean days between failures).
+2. **Calls Foundry** — posts the payload to the agent through the Responses API (`agent_reference` + managed-identity token) and parses its JSON.
+3. **Validates and clamps** the model's output before returning it, falling back to a deterministic score if Foundry is unavailable (`"source": "local-heuristic"`).
+
+Then run this prompt in Copilot Chat (agent mode) to extend the spec you generated in the previous step:
+
+> Look at the `POST /api/foundry/predict` route in `workorder-system/server.js` and the response shape built in `workorder-system/lib/foundry.js`. Add a `predictMaintenance` operation for it to the existing `workorder-system/openapi.json` (OpenAPI 2.0 / Swagger, `basePath` `/api`, so the path is `/foundry/predict`). Include the request body schema (`assetId` required, optional `historyLimit` and `workOrderHistory`) and a full response schema covering `riskScore`, `riskLevel`, `confidence`, `recommendedAction`, `recommendedPriority`, `recommendedWithinDays`, `rationale`, `riskFactors`, `signals`, and `source`. Keep it strict enough for the Power Apps custom connector to import: explicit `"format": "int32"` on every integer, `"format": "date-time"` on ISO timestamps, `enum` values for `riskLevel`, `recommendedPriority`, and `source`, and `"x-nullable": true` on nullable properties. Add a `description` on the operation that tells the Copilot Studio orchestrator to call it when the user asks about failure risk, predicted maintenance, or what service an asset needs next.
+
+> Presenter fallback: the known-good copy in `workorder-system/openapi.reference.json` already contains `predictMaintenance`. Copy it over `workorder-system/openapi.json` if the live generation misbehaves.
+
+### Step B — Deploy and smoke-test
+
+Redeploy only if you changed the routes — the endpoint ships with the app:
+
+```powershell
+cd workorder-system
+az webapp up `
+  --name app-contosowo-mvjskqas3y4lo `
+  --resource-group rg-contoso-workorders `
+  --runtime "NODE:22-lts"
+```
+
+Confirm Foundry is wired up, then call the endpoint:
+
+```powershell
+# Should return foundryConfigured : True
+Invoke-RestMethod "https://<webAppName>.azurewebsites.net/api/health"
+
+Invoke-RestMethod -Method POST "https://<webAppName>.azurewebsites.net/api/foundry/predict" `
+  -ContentType "application/json" `
+  -Body '{ "assetId": "CE-LAS-3300" }'
+```
+
+Expect `riskScore`, `riskLevel`, `recommendedAction`, `suggestedWorkOrderTitle`, and `"source": "azure-ai-foundry"`.
+
+> If `source` comes back as `local-heuristic`, the App Service could not reach Foundry — check `FOUNDRY_PROJECT_ENDPOINT` / `FOUNDRY_AGENT_NAME` and that the Web App's managed identity has the **Foundry User** role. The demo still runs; the answer just isn't coming from Foundry.
+
+### Step C — Add `predictMaintenance` as a tool in Copilot Studio
+
+Same path as the other two operations:
+
+1. If you imported the custom connector already, **re-import** the updated `openapi.json` (in Power Apps: your connector → **Edit** → **Swagger Editor** / **Update from OpenAPI file**) so `predictMaintenance` appears, then **Update connector**.
+2. Back in Copilot Studio, open the agent → **Add a tool** → your custom connector → add **predictMaintenance**.
+3. Give it an orchestrator-friendly **description**:
+   - *"Predicts equipment failure risk. Given an asset ID (e.g., CE-LAS-3300), returns a risk score from 0-100, a risk level, the reasons behind it, and a recommended maintenance action. Use it whenever the user asks what maintenance an asset needs next, how likely it is to fail, or which equipment to prioritise."*
+4. Describe the **`assetId`** input so the orchestrator maps the equipment name in the question to the right ID.
+5. **Save** and **Publish**.
+
+> To make the chaining reliable, add one line to the agent's instructions: *"When `predictMaintenance` returns a risk level of High or Critical and the user agrees to act, call `createWorkOrder` using `suggestedWorkOrderTitle` as the title and `recommendedPriority` as the priority."* The response is deliberately shaped so those fields drop straight into `createWorkOrder`.
+
+### Step D — Run it live
+
+In the **Test** pane:
+
+| Question | What the audience sees |
+|----------|------------------------|
+| "What maintenance will the CO2 laser cutter (CE-LAS-3300) need next?" | Copilot Studio → `predictMaintenance` → Foundry. A **Critical** risk score with reasons drawn from real work-order history. |
+| "Why is the risk that high?" | The agent reads back `riskFactors` and `rationale` — every factor cites a real count or date, not a hallucination. |
+| "OK, open that work order." | Chains into `createWorkOrder` using `suggestedWorkOrderTitle` / `recommendedPriority`; the ticket appears on the dashboard. |
+| "Rank the SMT line equipment by failure risk." | Multiple `predictMaintenance` calls in one turn, ranked in the answer. |
+| "Is the oscilloscope (CE-OSC-1200) at risk?" | The contrast case — **Low** risk, "keep it on the routine schedule", and warranty still Active. |
+
+**The line to land it:** *"Azure AI Foundry did the reasoning, GitHub Copilot wrote the contract that exposed it, and Copilot Studio orchestrated the whole thing — same equipment data, same source of truth, three Microsoft AI surfaces in one sentence from the user."*
+
+### Presenter tips
+
+- Expand the tool-call trace in the Test pane so the audience sees `predictMaintenance` fire and the JSON come back — the risk score landing in the answer is much more convincing than the prose alone.
+- Ask "why?" as a follow-up. Grounded `riskFactors` are the antidote to "isn't this just the model guessing?"
+- Run the **CE-LAS-3300 (Critical)** and **CE-OSC-1200 (Low)** cases back to back. The contrast proves the score reflects the data, not a canned answer.
+- First call after an idle App Service can be slow (F1 has no Always On). Warm it up with a health check before you start.
+
+---
+
 ## (Optional extension) Adding Dataverse business data
 
 Use this if you want a talk track that shows the agent **combining data from two sources in a single answer**: the live **Work Order & Warranty System** API (operational truth — warranty, work orders) **and** a **Dataverse** table holding the business context a customer typically already has (vendors, service contracts, SLA, cost). Keying both on the same `AssetId` lets the agent join them.
@@ -173,7 +287,7 @@ Run these in the **Test** pane to show both sources being combined:
 
 ## Generating a PowerPoint with Copilot Cowork
 
-This is the optional finale (run-of-show step 6). It shows the **same** Work Order & Warranty System data being turned into a polished artifact by **Copilot Cowork** using the **Contoso Equipment Insights** plugin ([../cowork-plugin](../cowork-plugin)).
+This is the optional finale (run-of-show step 7). It shows the **same** Work Order & Warranty System data being turned into a polished artifact by **Copilot Cowork** using the **Contoso Equipment Insights** plugin ([../cowork-plugin](../cowork-plugin)).
 
 **Prerequisite:** the plugin is installed and enabled per [setup_guide.md](./setup_guide.md) Part E, and its connector points at your deployed system's `/mcp` endpoint.
 
@@ -259,6 +373,19 @@ Use these after the connector tools are connected. The agent calls the deployed 
 | Check the warranty on the wave soldering machine (CE-WAV-2600) and, if expired, create a work order to renew the service contract. | Reasoning + conditional action against the live system. |
 | Show me the open work orders for the laser cutter. | Work order lookup (`GET /workorders?assetId=CE-LAS-3300`). |
 
+### E. Predictive questions (backed by the Azure AI Foundry agent)
+
+Use these once `predictMaintenance` is connected. Each one round-trips through **Azure AI Foundry**, so the reasoning is generated live from the asset's real history.
+
+| Question | Capability demonstrated |
+|----------|-------------------------|
+| What maintenance will the CO2 laser cutter (CE-LAS-3300) need next? | Foundry risk score + recommended action for a high-risk, out-of-warranty asset. |
+| Is the digital oscilloscope (CE-OSC-1200) at risk of failing? | The contrast case — **Low** risk, routine schedule, warranty still Active. |
+| Why is the laser cutter's risk score that high? | Reads back `riskFactors` and `rationale`, each citing a real count or date. |
+| Which of our SMT line machines should we service first? | Multiple `predictMaintenance` calls ranked in a single answer. |
+| Predict the risk on the wave soldering machine (CE-WAV-2600) and open a work order if it's High or Critical. | Foundry prediction chained into `createWorkOrder` using `suggestedWorkOrderTitle` and `recommendedPriority`. |
+| The soldering station threw error E-04 twice this week — what's the failure risk? | Knowledge retrieval (SharePoint) + Foundry prediction in one turn. |
+
 ---
 
 ## Presenter tips
@@ -267,4 +394,5 @@ Use these after the connector tools are connected. The agent calls the deployed 
 - Keep questions specific (include the equipment name or asset ID) for the cleanest, grounded answers.
 - If an answer looks generic, confirm web search is disabled and the knowledge sources are healthy.
 - Keep the **work order dashboard** visible so the audience sees work orders appear live when the agent creates them.
+- Before the predictive step, check `GET {apiBaseUrl}/health` shows `"foundryConfigured": true` — it also warms up the App Service.
 - Save the **action questions** for the finale so the payoff (knowledge + custom capability) lands last.

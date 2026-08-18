@@ -2,8 +2,8 @@
   "swagger": "2.0",
   "info": {
     "title": "Contoso Maintenance Actions",
-    "description": "Endpoints on the Contoso Work Order & Warranty System (Azure App Service) that let the Copilot Studio agent check warranty status and create work orders.",
-    "version": "1.0.0"
+    "description": "Endpoints on the Contoso Work Order & Warranty System (Azure App Service) that let the Copilot Studio agent check warranty status, predict maintenance risk with the Azure AI Foundry agent, and create work orders.",
+    "version": "1.1.0"
   },
   "host": "app-contosowo-mvjskqas3y4lo.azurewebsites.net",
   "basePath": "/api",
@@ -78,6 +78,79 @@
         }
       }
     },
+    "/foundry/predict": {
+      "post": {
+        "operationId": "predictMaintenance",
+        "summary": "Predict maintenance risk for equipment",
+        "description": "Uses the Azure AI Foundry 'Predictive Maintenance Insights' agent to reason over an asset's warranty status and recent work-order history and return a risk score (0-100), a risk level, and a recommended maintenance action.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PredictionRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Risk assessment and recommended action for the requested asset.",
+            "schema": {
+              "$ref": "#/definitions/Prediction"
+            },
+            "examples": {
+              "application/json": {
+                "assetId": "CE-LAS-3300",
+                "equipmentName": "CO2 Laser Cutter",
+                "model": "Contoso PrecisionCut LC-150",
+                "location": "Enclosure Fabrication Shop - Bay 2",
+                "warrantyStatus": "Expired",
+                "underWarranty": false,
+                "riskScore": 78,
+                "riskLevel": "Critical",
+                "confidence": 0.82,
+                "recommendedAction": "Take CE-LAS-3300 out of production for a laser tube power measurement and full optical path alignment within the week.",
+                "recommendedPriority": "Critical",
+                "recommendedWithinDays": 5,
+                "rationale": "Two work orders in the last 90 days against a 78-day mean interval shows the failure cadence is accelerating.",
+                "suggestedWorkOrderTitle": "Laser tube power check and optical realignment",
+                "source": "azure-ai-foundry",
+                "generatedAt": "2026-08-18T10:00:00.000Z"
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required assetId field.",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            },
+            "examples": {
+              "application/json": {
+                "error": "The \"assetId\" field is required."
+              }
+            }
+          },
+          "404": {
+            "description": "Equipment not found.",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            },
+            "examples": {
+              "application/json": {
+                "error": "Equipment 'CE-XYZ-0000' not found."
+              }
+            }
+          },
+          "502": {
+            "description": "The Azure AI Foundry agent could not be reached and fallback is disabled.",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/createWorkOrder": {
       "post": {
         "operationId": "createWorkOrder",
@@ -135,6 +208,250 @@
     }
   },
   "definitions": {
+    "PredictionRequest": {
+      "type": "object",
+      "required": [
+        "assetId"
+      ],
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "description": "The asset ID of the equipment to assess (e.g., CE-LAS-3300).",
+          "example": "CE-LAS-3300"
+        },
+        "historyLimit": {
+          "type": "integer",
+          "format": "int32",
+          "description": "How many recent work orders to reason over (1-20, default 5).",
+          "example": 5
+        },
+        "workOrderHistory": {
+          "type": "array",
+          "description": "Optional extra history the caller observed that is not yet ticketed in the system.",
+          "items": {
+            "$ref": "#/definitions/WorkOrderHistoryItem"
+          }
+        }
+      }
+    },
+    "WorkOrderHistoryItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "x-nullable": true,
+          "example": "WO-2026-0009"
+        },
+        "title": {
+          "type": "string",
+          "example": "Incomplete cuts on 6 mm acrylic"
+        },
+        "description": {
+          "type": "string",
+          "example": "Operator reports beam not cutting through."
+        },
+        "priority": {
+          "type": "string",
+          "example": "High"
+        },
+        "status": {
+          "type": "string",
+          "example": "Open"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true,
+          "example": "2026-08-07T09:12:00.000Z"
+        }
+      }
+    },
+    "RiskFactor": {
+      "type": "object",
+      "properties": {
+        "factor": {
+          "type": "string",
+          "example": "Accelerating failure cadence"
+        },
+        "impact": {
+          "type": "string",
+          "enum": [
+            "Low",
+            "Medium",
+            "High"
+          ],
+          "example": "High"
+        },
+        "detail": {
+          "type": "string",
+          "example": "2 work orders in the last 90 days versus a 78-day mean interval."
+        }
+      }
+    },
+    "PredictionSignals": {
+      "type": "object",
+      "properties": {
+        "ageYears": {
+          "type": "number",
+          "format": "float",
+          "x-nullable": true,
+          "example": 4
+        },
+        "totalWorkOrders": {
+          "type": "integer",
+          "format": "int32",
+          "example": 4
+        },
+        "openWorkOrders": {
+          "type": "integer",
+          "format": "int32",
+          "example": 2
+        },
+        "highOrCriticalWorkOrders": {
+          "type": "integer",
+          "format": "int32",
+          "example": 3
+        },
+        "workOrdersLast90Days": {
+          "type": "integer",
+          "format": "int32",
+          "example": 2
+        },
+        "workOrdersLast365Days": {
+          "type": "integer",
+          "format": "int32",
+          "example": 3
+        },
+        "daysSinceLastWorkOrder": {
+          "type": "integer",
+          "format": "int32",
+          "x-nullable": true,
+          "example": 11
+        },
+        "meanDaysBetweenWorkOrders": {
+          "type": "integer",
+          "format": "int32",
+          "x-nullable": true,
+          "example": 78
+        }
+      }
+    },
+    "Prediction": {
+      "type": "object",
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "example": "CE-LAS-3300"
+        },
+        "equipmentName": {
+          "type": "string",
+          "example": "CO2 Laser Cutter"
+        },
+        "model": {
+          "type": "string",
+          "example": "Contoso PrecisionCut LC-150"
+        },
+        "location": {
+          "type": "string",
+          "example": "Enclosure Fabrication Shop - Bay 2"
+        },
+        "warrantyStatus": {
+          "type": "string",
+          "example": "Expired"
+        },
+        "underWarranty": {
+          "type": "boolean",
+          "example": false
+        },
+        "riskScore": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Failure risk from 0 (low) to 100 (imminent).",
+          "example": 78
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": [
+            "Low",
+            "Moderate",
+            "High",
+            "Critical"
+          ],
+          "example": "Critical"
+        },
+        "confidence": {
+          "type": "number",
+          "format": "float",
+          "example": 0.82
+        },
+        "recommendedAction": {
+          "type": "string",
+          "example": "Take CE-LAS-3300 out of production for a laser tube power measurement within the week."
+        },
+        "recommendedPriority": {
+          "type": "string",
+          "enum": [
+            "Low",
+            "Medium",
+            "High",
+            "Critical"
+          ],
+          "example": "Critical"
+        },
+        "recommendedWithinDays": {
+          "type": "integer",
+          "format": "int32",
+          "example": 5
+        },
+        "rationale": {
+          "type": "string",
+          "example": "Two work orders in the last 90 days against a 78-day mean interval shows the failure cadence is accelerating."
+        },
+        "suggestedWorkOrderTitle": {
+          "type": "string",
+          "example": "Laser tube power check and optical realignment"
+        },
+        "riskFactors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RiskFactor"
+          }
+        },
+        "signals": {
+          "$ref": "#/definitions/PredictionSignals"
+        },
+        "workOrderHistory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WorkOrderHistoryItem"
+          }
+        },
+        "source": {
+          "type": "string",
+          "description": "'azure-ai-foundry' when the Foundry agent answered, 'local-heuristic' when the built-in fallback did.",
+          "enum": [
+            "azure-ai-foundry",
+            "local-heuristic"
+          ],
+          "example": "azure-ai-foundry"
+        },
+        "foundryAgentName": {
+          "type": "string",
+          "x-nullable": true,
+          "example": "predictive-maintenance-insights"
+        },
+        "fallbackReason": {
+          "type": "string",
+          "x-nullable": true,
+          "example": null
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2026-08-18T10:00:00.000Z"
+        }
+      }
+    },
     "Warranty": {
       "type": "object",
       "properties": {

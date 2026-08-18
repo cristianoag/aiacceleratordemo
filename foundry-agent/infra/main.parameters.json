@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "appName": {
+      "value": "contosowo"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "projectName": {
+      "value": "proj-predictive-maintenance"
+    },
+    "modelDeploymentName": {
+      "value": "gpt-4.1-mini"
+    },
+    "modelName": {
+      "value": "gpt-4.1-mini"
+    },
+    "modelVersion": {
+      "value": "2025-04-14"
+    },
+    "modelSkuName": {
+      "value": "GlobalStandard"
+    },
+    "modelCapacity": {
+      "value": 20
+    },
+    "webAppPrincipalId": {
+      "value": ""
+    }
+  }
+}

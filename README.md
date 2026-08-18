@@ -1,6 +1,6 @@
 # AI Solution Accelerator — Demo Repository
 
-This repository contains everything needed to deliver the **AI Solution Accelerator** demo: a 10‑minute story that shows how Microsoft takes a business requirement to a production‑ready AI solution using **Copilot Studio**, **Azure**, **Visual Studio Code**, **GitHub Copilot**, and **Copilot Cowork**.
+This repository contains everything needed to deliver the **AI Solution Accelerator** demo: a 10‑minute story that shows how Microsoft takes a business requirement to a production‑ready AI solution using **Copilot Studio**, **Azure AI Foundry**, **Azure**, **Visual Studio Code**, **GitHub Copilot**, and **Copilot Cowork**.
 
 **Scenario:** a maintenance manager at the fictitious **Contoso Electronics** (an electronics manufacturer) needs an AI assistant that can both *answer equipment questions* from enterprise knowledge and *take real actions* (check warranty, create work orders) — and turn that data into artifacts like a PowerPoint deck.
 
@@ -11,9 +11,10 @@ This repository contains everything needed to deliver the **AI Solution Accelera
 ## What the demo shows
 
 1. **Knowledge Q&A** — a Copilot Studio agent answers equipment questions grounded in documents hosted across **SharePoint** and **Azure AI Search**.
-2. **AI‑assisted development** — GitHub Copilot generates an **OpenAPI connector spec** for the two existing API endpoints (`checkWarranty`, `createWorkOrder`), imported as a **custom connector** in Copilot Studio. *(This is the only piece built live during the presentation.)*
+2. **AI‑assisted development** — GitHub Copilot generates an **OpenAPI connector spec** for the existing API endpoints (`checkWarranty`, `createWorkOrder`, `predictMaintenance`), imported as a **custom connector** in Copilot Studio. *(This is the only piece built live during the presentation.)*
 3. **Real business actions** — the agent uses these operations to check warranty and create work orders in the **Work Order & Warranty System**.
-4. **Artifact generation** — **Copilot Cowork** generates a PowerPoint deck from the same live system data via a custom plugin.
+4. **Predictive intelligence** — an **Azure AI Foundry** agent scores failure risk from the same equipment data and recommends a maintenance action, called live from Copilot Studio.
+5. **Artifact generation** — **Copilot Cowork** generates a PowerPoint deck from the same live system data via a custom plugin.
 
 ## Architecture
 
@@ -24,7 +25,7 @@ flowchart LR
     subgraph Copilot["Microsoft Copilot Studio Agent"]
       KB1[SharePoint<br/>Word docs]
       KB2[Azure AI Search<br/>PDF docs]
-      FN[Custom connector<br/>checkWarranty / createWorkOrder]
+      FN[Custom connector<br/>checkWarranty / createWorkOrder<br/>predictMaintenance]
     end
 
     subgraph System["Work Order & Warranty System (Azure App Service)"]
@@ -32,12 +33,14 @@ flowchart LR
       MCP[/MCP endpoint/]
     end
 
+    Foundry["Azure AI Foundry<br/>Predictive Maintenance Insights agent"]
     Cowork["Copilot Cowork<br/>+ Equipment Insights plugin"]
 
     User --> Copilot
     Copilot --> KB1
     Copilot --> KB2
     FN --> API
+    API -->|managed identity| Foundry
     User --> Cowork
     Cowork --> MCP
     MCP --- API
@@ -52,6 +55,7 @@ flowchart LR
 | [docs/](docs/) | All demo documentation (proposal, setup, run‑of‑show). |
 | [artifacts/](artifacts/) | 15 equipment reference documents (7 Word + 8 PDF) used as agent knowledge, plus the generator script. |
 | [workorder-system/](workorder-system/) | Node.js/Express **Work Order & Warranty System** — REST API, dashboard, MCP endpoint, and Bicep for Azure App Service. |
+| [foundry-agent/](foundry-agent/) | **Azure AI Foundry** project + "Predictive Maintenance Insights" agent (definition, prompt, Bicep, create/test scripts). |
 | [cowork-plugin/](cowork-plugin/) | **Copilot Cowork plugin** (manifest, skill, icons) that generates equipment decks from live system data. |
 | [dataverse/](dataverse/) | *(Optional)* Sample **Dataverse** service-contract data (`equipment-service-contracts.csv`) for the "combine data from two sources" extension. |
 
@@ -63,6 +67,7 @@ flowchart LR
 | [docs/setup_guide.md](docs/setup_guide.md) | Step‑by‑step **environment setup to complete before the demo** (SharePoint, Azure AI Search, deploy the system, Copilot Studio agent, install the Cowork plugin, and the optional Dataverse table). |
 | [docs/demo_guide.md](docs/demo_guide.md) | The **presenter run‑of‑show**, the exact GitHub Copilot prompt and CLI commands for the live OpenAPI connector spec, sample questions, and the Cowork deck finale. |
 | [workorder-system/README.md](workorder-system/README.md) | System API reference and deployment details. |
+| [foundry-agent/README.md](foundry-agent/README.md) | Azure AI Foundry agent contract, Bicep deployment, and how it plugs into the system. |
 | [cowork-plugin/README.md](cowork-plugin/README.md) | Plugin build, packaging, and installation. |
 
 ---
@@ -75,8 +80,9 @@ flowchart LR
 | Work Order & Warranty System ([workorder-system/](workorder-system/)) | Prepared — deployed to Azure **before** the demo. |
 | Copilot Studio agent + knowledge | Prepared — configured **before** the demo. |
 | Copilot Cowork plugin ([cowork-plugin/](cowork-plugin/)) | Prepared — installed **before** the demo. |
+| **Azure AI Foundry agent** ([foundry-agent/](foundry-agent/)) | Prepared — project, model, and agent deployed **before** the demo; the connector operation is added to the agent live. |
 | **(Optional) Dataverse table** ([dataverse/](dataverse/)) | Prepared — table created and data loaded **before** the demo; the connector is added to the agent live. |
-| **OpenAPI connector spec** (`checkWarranty`, `createWorkOrder`) | **Built live** with GitHub Copilot, then imported as a custom connector in Copilot Studio. |
+| **OpenAPI connector spec** (`checkWarranty`, `createWorkOrder`, `predictMaintenance`) | **Built live** with GitHub Copilot, then imported as a custom connector in Copilot Studio. |
 
 ---
 
@@ -88,6 +94,7 @@ flowchart LR
    - Deploy the [Work Order & Warranty System](workorder-system/) to Azure App Service.
    - Create and connect the Copilot Studio agent.
    - Build and install the [Copilot Cowork plugin](cowork-plugin/).
+   - Deploy the [Azure AI Foundry agent](foundry-agent/) and wire it to the system (setup guide Part G) for the predictive maintenance step.
    - *(Optional)* Create the **Dataverse** service-contract table and load [dataverse/equipment-service-contracts.csv](dataverse/equipment-service-contracts.csv) (setup guide Part F) for the "combine data from two sources" story.
 3. **Rehearse and present** using [docs/demo_guide.md](docs/demo_guide.md).
 
@@ -97,6 +104,6 @@ flowchart LR
 
 ## Notes
 
-- The Work Order & Warranty System is the **single source of truth** for warranty status and work orders — the Copilot Studio agent (via a custom connector) and Copilot Cowork (via the MCP connector) both read the same data.
+- The Work Order & Warranty System is the **single source of truth** for warranty status and work orders — the Copilot Studio agent (via a custom connector), the Azure AI Foundry agent (via the system's own API), and Copilot Cowork (via the MCP connector) all read the same data.
 - Some equipment warranties are intentionally **expired** relative to the demo date, enabling the "expired → create work order" narrative.
 - The samples use demo‑grade authentication (open endpoints). Harden authentication before any non‑demo use.
