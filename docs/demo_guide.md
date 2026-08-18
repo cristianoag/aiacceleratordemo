@@ -16,6 +16,7 @@ This guide is the presenter script for the demo described in [demo_proposal.md](
 - [ ] VS Code open with the repo and GitHub Copilot enabled (for the "extend with code" step).
 - [ ] Azure subscription signed in for redeploying the Work Order & Warranty System.
 - [ ] Work order dashboard open in a browser tab to show live updates.
+- [ ] **Work-order history seeded** — `GET {apiBaseUrl}/stats` returns `totalWorkOrders: 8`. If not, re-run [setup_guide.md](./setup_guide.md) step 4.4; without it the predictive step scores everything Low.
 - [ ] **Azure AI Foundry agent (Predictive Maintenance Insights) deployed** and `GET {apiBaseUrl}/health` returns `"foundryConfigured": true` (for the predictive step). See [setup_guide.md](./setup_guide.md) Part G.
 - [ ] **Copilot Cowork plugin (Contoso Equipment Insights) installed and enabled** (for the deck-generation finale). See [setup_guide.md](./setup_guide.md) Part E.
 - [ ] Test pane pre-loaded with one warm-up question.

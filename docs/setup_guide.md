@@ -178,6 +178,38 @@ az webapp up `
 
 > Keep the **`apiBaseUrl`** handy \u2014 the Azure Function created during the demo will call `.../equipment/{assetId}/warranty` and `.../workorders`.
 
+### 4.4 Seed the demo work-order history
+
+Run this **before every demo**. It loads a curated work-order history from [../workorder-system/data/workorders.seed.json](../workorder-system/data/workorders.seed.json), which gives the predictive maintenance step (Part G) something meaningful to reason over and clears any throwaway tickets created during rehearsals.
+
+The seed data gives the **Wave Soldering Machine (CE-WAV-2600)** five work orders whose failure cadence tightens from 112 → 90 → 49 → 21 days, ending in an open **Critical** yield issue causally linked to an open **High** pump-bearing fault. That accelerating pattern is what drives the Foundry agent to a Critical risk score.
+
+The API stamps `createdAt` to the current time, so the backdated history has to be written to the app's data file directly. SCM basic auth is disabled by policy on this subscription, but the Kudu VFS API accepts **Entra tokens**:
+
+```powershell
+# From the repository root
+$app = "<webAppName-from-Part-C>"
+$tok = az account get-access-token --resource https://management.azure.com --query accessToken -o tsv
+$body = Get-Content "workorder-system/data/workorders.seed.json" -Raw
+
+Invoke-WebRequest -Method PUT `
+  -Uri "https://$app.scm.azurewebsites.net/api/vfs/data/workorders.json" `
+  -Headers @{ Authorization = "Bearer $tok"; "If-Match" = "*"; "Content-Type" = "application/json" } `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+
+# The store caches work orders in memory at startup, so a restart is required
+az webapp restart -g rg-contoso-workorders -n $app
+```
+
+Verify (allow ~20 seconds for the F1 tier to cold-start):
+
+```powershell
+Invoke-RestMethod "<apiBaseUrl>/stats"
+# -> totalWorkOrders : 8, openWorkOrders : 4
+```
+
+> The data file lives at `/home/data/workorders.json`, outside `wwwroot`, so `az webapp up` does **not** overwrite it \u2014 redeploys are safe and work orders created during the demo persist until you re-seed.
+
 ---
 
 ## 5. Part D — Create and connect the Copilot Studio agent
@@ -414,6 +446,17 @@ Invoke-RestMethod -Method POST "<apiBaseUrl>/foundry/predict" `
 ```
 
 Expect a `riskScore`, `riskLevel`, `recommendedAction`, and **`"source": "azure-ai-foundry"`**.
+
+With the seed data from 4.4 loaded, the four demo assets should land roughly here — scores vary slightly per run, but the **levels** should be stable:
+
+| Asset | Score | Level | Warranty | Role in the demo |
+|-------|-------|-------|----------|------------------|
+| CE-WAV-2600 (Wave Soldering Machine) | ~95 | Critical | Expired | The chaining question — prediction feeds `createWorkOrder`. |
+| CE-LAS-3300 (CO2 Laser Cutter) | ~90 | Critical | Expired | The headline predictive question. |
+| CE-SOL-0450 (Soldering Station) | ~35 | Moderate | Expired | Middle case. |
+| CE-OSC-1200 (Oscilloscope) | ~15 | Low | Active | The contrast case — run it back to back with a Critical one. |
+
+> If every asset scores Low, the work-order history is missing — re-run step 4.4.
 
 > If `source` is `local-heuristic`, the app fell back to its built-in deterministic score. Check the two app settings and the role assignment from 8.2, and read `fallbackReason` in the response. The demo still works either way — but for the Foundry story you want `azure-ai-foundry`.
 ---

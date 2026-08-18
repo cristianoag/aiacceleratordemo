@@ -22,6 +22,7 @@ workorder-system/
 ├── lib/store.js             # Data store + warranty logic
 ├── lib/foundry.js           # Azure AI Foundry predictive-maintenance integration
 ├── data/equipment.json      # Seeded equipment + warranty data (15 assets)
+├── data/workorders.seed.json # Curated work-order history for the demo (see below)
 ├── public/                  # Dashboard UI (index.html, styles.css, app.js)
 ├── infra/
 │   ├── main.bicep           # Azure App Service + App Insights deployment
@@ -164,6 +165,35 @@ Response `201 Created`:
 
 > Valid priorities: `Low`, `Medium`, `High`, `Critical`.
 > Valid statuses: `Open`, `In Progress`, `On Hold`, `Completed`, `Cancelled`.
+
+### Demo work-order data
+
+[data/workorders.seed.json](./data/workorders.seed.json) holds a curated history
+used to prime the demo. It gives the Wave Soldering Machine (CE-WAV-2600) a
+failure cadence that tightens from 112 → 90 → 49 → 21 days, ending in an open
+**Critical** yield issue linked to an open **High** pump-bearing fault — the
+pattern that drives the Foundry agent to a Critical risk score. Without it every
+asset scores Low and the predictive step falls flat.
+
+The API stamps `createdAt` to the current time, so backdated history must be
+written to the runtime data file directly. SCM basic auth is disabled by policy
+on the demo subscription, but Kudu's VFS API accepts Entra tokens:
+
+```powershell
+$app = "<webAppName>"
+$tok = az account get-access-token --resource https://management.azure.com --query accessToken -o tsv
+$body = Get-Content "data/workorders.seed.json" -Raw
+
+Invoke-WebRequest -Method PUT `
+  -Uri "https://$app.scm.azurewebsites.net/api/vfs/data/workorders.json" `
+  -Headers @{ Authorization = "Bearer $tok"; "If-Match" = "*"; "Content-Type" = "application/json" } `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+
+az webapp restart -g rg-contoso-workorders -n $app   # the store caches on startup
+```
+
+The runtime file lives at `/home/data/workorders.json` (outside `wwwroot`), so
+`az webapp up` does not overwrite it.
 
 ### Optional API key
 
