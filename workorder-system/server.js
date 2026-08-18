@@ -4,8 +4,9 @@
  * Contoso Electronics - Equipment Work Order & Warranty System
  * ------------------------------------------------------------
  * A lightweight Express app providing:
- *   - A JSON REST API used by the Copilot Studio agent / Azure Function to
- *     check warranty status and create/track work orders.
+ *   - A JSON REST API used by the Copilot Studio agent (via a custom connector)
+ *     to check warranty status, create/track work orders, and predict
+ *     maintenance risk with the Azure AI Foundry agent.
  *   - A simple web dashboard (in /public) to visualize equipment, warranty
  *     status, and work orders during the demo.
  *

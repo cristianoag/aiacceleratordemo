@@ -35,7 +35,7 @@ Set the scene: a maintenance manager at Contoso Electronics needs an assistant t
 ### 3. Extend the agent with code (3 min)
 - Switch to VS Code (this repo is open). The two endpoints — `checkWarranty` (`GET /api/checkWarranty`) and `createWorkOrder` (`POST /api/createWorkOrder`) — already exist in the Work Order & Warranty System; walk through them, then have **GitHub Copilot generate the OpenAPI connector spec live**.
 - The app is already deployed; redeploy only if you edit the routes.
-- **Use the exact prompts and commands in [Building, deploying & connecting the Azure Functions](#building-deploying--connecting-the-azure-functions) below.**
+- **Use the exact prompts and commands in [Building, deploying & connecting the API operations](#building-deploying--connecting-the-api-operations) below.**
 
 ### 4. Connect the new capability (2 min)
 - Add the two operations as **tools/actions** in Copilot Studio (see the same section below).
@@ -57,16 +57,16 @@ Set the scene: a maintenance manager at Contoso Electronics needs an assistant t
 
 ---
 
-## Building, deploying & connecting the Azure Functions
+## Building, deploying & connecting the API operations
 
-This is the detailed script for demo steps 3 and 4. It creates **two HTTP-triggered Azure Functions** that act as the bridge between the Copilot Studio agent and the deployed Work Order & Warranty System:
+This is the detailed script for demo steps 3 and 4. Two HTTP operations act as the bridge between the Copilot Studio agent and the deployed Work Order & Warranty System:
 
-| Function | Method | Calls the system | Purpose |
-|----------|--------|------------------|---------|
-| `checkWarranty` | GET | `GET {WORKORDER_API_BASE}/equipment/{assetId}/warranty` | Check an asset's warranty status. |
-| `createWorkOrder` | POST | `POST {WORKORDER_API_BASE}/workorders` | Create a work order for an asset. |
+| Operation | Method | Route on the App Service | Purpose |
+|-----------|--------|--------------------------|---------|
+| `checkWarranty` | GET | `/api/checkWarranty?assetId=...` | Check an asset's warranty status. |
+| `createWorkOrder` | POST | `/api/createWorkOrder` | Create a work order for an asset. |
 
-> **Note on hosting.** This subscription's governance policy blocks public network access and shared-key auth on new storage accounts, so a Consumption-plan Azure Function App can't be provisioned. Instead, the two operations are exposed as routes (`/api/checkWarranty`, `/api/createWorkOrder`) on the **already-deployed Work Order & Warranty System** App Service. The code-first "extend the agent" story is unchanged — you still write the handlers with Copilot and redeploy — there is just no separate Function App to manage.
+> **No Azure Functions here.** An earlier draft of this demo used two HTTP-triggered Azure Functions, but this subscription's governance policy blocks public network access and shared-key auth on new storage accounts, so a Consumption-plan Function App can't be provisioned. The operations are instead routes on the **already-deployed Work Order & Warranty System** App Service, and Copilot Studio calls them directly through a **custom connector**. The code-first "extend the agent" story is unchanged — you still show the handlers, have Copilot generate the connector spec, and redeploy — there is just no separate Function App to manage.
 
 **Prerequisites for this step**
 - Azure CLI (`az`) installed and signed in.

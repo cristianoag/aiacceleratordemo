@@ -7,8 +7,8 @@ This guide walks through setting up the full demo environment:
 1. **Knowledge** — equipment documents hosted across **two** enterprise sources:
    - **Part of the documents on SharePoint** (the Word documents)
    - **Part of the documents on Azure AI Search** (the PDF documents, indexed from Azure Blob Storage)
-2. **Business system** — the **Work Order & Warranty System** ([../workorder-system](../workorder-system)) deployed to **Azure App Service**. It is the source of truth for warranty status and work orders that the agent's Azure Function will call.
-3. **Agent** — a **Microsoft Copilot Studio** agent that connects to the knowledge sources (and later, the deployed system via an Azure Function).
+2. **Business system** — the **Work Order & Warranty System** ([../workorder-system](../workorder-system)) deployed to **Azure App Service**. It is the source of truth for warranty status and work orders, and it hosts the API operations the agent calls.
+3. **Agent** — a **Microsoft Copilot Studio** agent that connects to the knowledge sources (and later, the deployed system via a custom connector).
 4. **Artifact generation** — a **Copilot Cowork plugin** ([../cowork-plugin](../cowork-plugin)) that generates PowerPoint decks/reports from live Work Order & Warranty System data.
 5. **(Optional) Business data** — a **Dataverse** table (service contracts, vendors, SLA, cost) so the agent can combine operational API data with enterprise business data in one answer.
 6. **Predictive intelligence** — an **Azure AI Foundry** project and agent ([../foundry-agent](../foundry-agent)) that scores failure risk from the same equipment data and is called by the system's `POST /api/foundry/predict` endpoint.
@@ -114,7 +114,7 @@ You can index with **keyword search** (simplest) or add **vectorization** (seman
 
 ## 4. Part C — Deploy and test the Work Order & Warranty System
 
-The [../workorder-system](../workorder-system) app tracks work orders and is the **source of truth for warranty**. Deploy it **before** the demo so the agent's Azure Function has a live API to call. Full details are in [../workorder-system/README.md](../workorder-system/README.md).
+The [../workorder-system](../workorder-system) app tracks work orders and is the **source of truth for warranty**. Deploy it **before** the demo so the Copilot Studio agent has a live API to call. Full details are in [../workorder-system/README.md](../workorder-system/README.md).
 
 ### 4.1 Provision infrastructure (Bicep)
 
@@ -176,7 +176,7 @@ az webapp up `
 
 > On Windows PowerShell, `curl` is often the native `curl.exe`, which ignores `-Method`/`-Headers`/`-Body` (you'll see a `built-in manual was disabled` warning and no POST happens). Use `Invoke-RestMethod` as shown above.
 
-> Keep the **`apiBaseUrl`** handy \u2014 the Azure Function created during the demo will call `.../equipment/{assetId}/warranty` and `.../workorders`.
+> Keep the **`apiBaseUrl`** handy — the custom connector built during the demo points at `/checkWarranty`, `/createWorkOrder`, and `/foundry/predict` on this base URL.
 
 ### 4.4 Seed the demo work-order history
 
@@ -459,17 +459,19 @@ With the seed data from 4.4 loaded, the four demo assets should land roughly her
 > If every asset scores Low, the work-order history is missing — re-run step 4.4.
 
 > If `source` is `local-heuristic`, the app fell back to its built-in deterministic score. Check the two app settings and the role assignment from 8.2, and read `fallbackReason` in the response. The demo still works either way — but for the Foundry story you want `azure-ai-foundry`.
+
 ---
 
 ## 9. Prepare for the "Extend with code" step
 
-During the demo you build an **Azure Function** that calls the Work Order & Warranty System deployed in Part C, then add it as a tool in Copilot Studio. To be ready:
+During the demo you use **GitHub Copilot** to generate an **OpenAPI (Swagger) spec** for API operations that already exist on the Work Order & Warranty System deployed in Part C, then import it as a **custom connector** in Copilot Studio. There is **no Azure Function** — the operations are routes on the App Service itself, so nothing extra needs provisioning. To be ready:
 
-- Have the **`apiBaseUrl`** from Part C available. The Function will call:
-  - `GET  {apiBaseUrl}/equipment/{assetId}/warranty` \u2014 check warranty.
-  - `POST {apiBaseUrl}/workorders` \u2014 create a work order.
-  - `GET  {apiBaseUrl}/workorders?assetId={assetId}` \u2014 look up existing work orders.
-- Ensure you have the **Azure Functions** extension in VS Code and are signed in to Azure.
+- Have the **`apiBaseUrl`** from Part C available. The connector exposes three operations:
+  - `GET  {apiBaseUrl}/checkWarranty?assetId=...` — check warranty.
+  - `POST {apiBaseUrl}/createWorkOrder` — create a work order.
+  - `POST {apiBaseUrl}/foundry/predict` — predict maintenance risk (Part G).
+- Open [../workorder-system/server.js](../workorder-system/server.js) so you can walk the audience through the handlers before Copilot generates the spec.
+- Keep [../workorder-system/openapi.reference.json](../workorder-system/openapi.reference.json) as the presenter fallback if live generation misbehaves.
 - Note the **asset IDs** (e.g., `CE-OSC-1200`, `CE-LAS-3300`) used in demo questions.
 
 See [demo_guide.md](./demo_guide.md) for the full run-of-show and sample questions.
@@ -480,7 +482,7 @@ See [demo_guide.md](./demo_guide.md) for the full run-of-show and sample questio
 
 After the demo, to avoid charges:
 
-- Delete the resource group holding the Work Order & Warranty System (`rg-contoso-workorders`) and the Azure Function. This also removes the Azure AI Foundry resource, project, and model deployment if you deployed Part G into the same group.
+- Delete the resource group holding the Work Order & Warranty System (`rg-contoso-workorders`). This also removes the Azure AI Foundry resource, project, and model deployment if you deployed Part G into the same group.
 - Delete the Azure AI Search service and storage account (or their resource group).
 - Uninstall the Cowork plugin: `atk uninstall --title-id <TitleId>` (or remove it from the M365 admin center), using the `TitleId` saved during install.
 - If you added Part F, delete the **Equipment Service Contract** Dataverse table from the Power Apps maker portal.

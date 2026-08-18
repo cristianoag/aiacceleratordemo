@@ -4,9 +4,10 @@ A lightweight web system that tracks **equipment work orders** and serves as the
 **source of truth for warranty status** for the AI Solution Accelerator demo
 (see [../docs/demo_proposal.md](../docs/demo_proposal.md)).
 
-The Copilot Studio agent — through an Azure Function — calls this system's REST
-API to **check warranty** and **create / track work orders**. A simple web
-dashboard visualizes equipment, warranty status, and work orders during the demo.
+The Copilot Studio agent — through a custom connector — calls this system's REST
+API to **check warranty**, **create / track work orders**, and **predict
+maintenance risk**. A simple web dashboard visualizes equipment, warranty
+status, and work orders during the demo.
 
 - Runtime: Node.js + Express
 - Hosting: Azure App Service (Linux)
@@ -280,14 +281,17 @@ settings directly. Full walkthrough:
 
 ## Connecting to the agent
 
-The Azure Function (built in the demo's "extend with code" step) should call:
+Copilot Studio calls this system directly through a **custom connector** built
+from the OpenAPI spec (generated live with GitHub Copilot during the demo; a
+known-good copy is in [openapi.reference.json](./openapi.reference.json)). The
+connector exposes three operations:
 
-- `GET  {apiBaseUrl}/equipment/{assetId}/warranty` — to check warranty.
-- `POST {apiBaseUrl}/workorders` — to create a work order.
-- `GET  {apiBaseUrl}/workorders?assetId={assetId}` — to look up existing work orders.
+- `GET  {apiBaseUrl}/checkWarranty?assetId={assetId}` — check warranty.
+- `POST {apiBaseUrl}/createWorkOrder` — create a work order.
+- `POST {apiBaseUrl}/foundry/predict` — predict maintenance risk.
 
-Add the Function as a tool/action in Copilot Studio (see
-[../docs/demo_guide.md](../docs/demo_guide.md)).
+See [../docs/demo_guide.md](../docs/demo_guide.md) for the Copilot Studio wiring
+steps.
 
 ---
 

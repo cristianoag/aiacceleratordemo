@@ -20,23 +20,29 @@ Demonstrate intelligent Q&A over maintenance documentation.
 3. Extend the Agent with Code (3 minutes)
 
 Switch to Visual Studio Code.
-Use GitHub Copilot to generate an Azure Function that adds a new business capability (e.g., check equipment warranty or create a maintenance work order).
-Deploy the function to Azure.
+Use GitHub Copilot to generate the OpenAPI connector spec for API operations that add new business capability (e.g., check equipment warranty or create a maintenance work order).
+Deploy the updated API to Azure App Service.
 4. Connect the New Capability (2 minutes)
 
-Add the Azure Function as a tool in Copilot Studio.
+Import the spec as a custom connector and add the operations as tools in Copilot Studio.
 Demonstrate that the agent can immediately use the newly developed capability.
 5. End-to-End Experience (2 minutes)
 
 Ask the agent a business question that requires both enterprise knowledge and the new capability.
-The agent reasons over available information, invokes the Azure Function, and returns a complete response with actionable recommendations.
+The agent reasons over available information, invokes the API operation, and returns a complete response with actionable recommendations.
+6. Predictive Intelligence (2 minutes)
+
+Ask the agent to predict which maintenance an asset needs next.
+Copilot Studio calls the API, which calls an Azure AI Foundry agent that reasons over the asset's warranty status and work-order history and returns a risk score plus a recommended action.
+The agent chains that recommendation straight into creating a work order — Foundry, GitHub Copilot, and Copilot Studio in a single user turn.
 Key Message
 The value is not simply building an AI agent. The value is demonstrating how Microsoft's platform enables organizations to rapidly evolve AI solutions—from knowledge retrieval to custom business capabilities—using AI-assisted development, enterprise-grade services, and low-code orchestration.
 
 Microsoft Technologies Highlighted
 Microsoft Copilot Studio for agent orchestration and user experience
 Azure AI Search for enterprise knowledge retrieval
-Azure Functions for custom business logic
+Azure App Service for custom business logic and API operations
+Azure AI Foundry for predictive reasoning over live business data
 Visual Studio Code for developer productivity
 GitHub Copilot for AI-assisted application development
 Azure Application Insights for monitoring and observability
